@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user-avatar",
+      "description": "User avatar placeholder",
+      "imageUrl": "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQwMzQxODB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "receipt-icon",
+      "description": "Receipt icon",
+      "imageUrl": "https://images.unsplash.com/photo-1706894037802-42fdc083c72b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxyZWNlaXB0JTIwcGFwZXJ8ZW58MHx8fHwxNzY0MDMyMTg0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "receipt paper"
+    },
+    {
+      "id": "shop-facade",
+      "description": "Generic shop facade",
+      "imageUrl": "https://images.unsplash.com/photo-1580554430120-94cfcb3adf25?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzdG9yZSUyMGZyb250fGVufDB8fHx8MTc2NDEyNDQ1Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "store front"
+    },
+    {
+      "id": "dairy-category",
+      "description": "Dairy products category icon",
+      "imageUrl": "https://images.unsplash.com/photo-1741522226997-a34b5a45c648?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtaWxrJTIwY2hlZXNlfGVufDB8fHx8MTc2NDEyNDQ1Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "milk cheese"
+    },
+    {
+      "id": "fruits-category",
+      "description": "Fruits category icon",
+      "imageUrl": "https://images.unsplash.com/photo-1609708440369-3ca6758f811a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxhcHBsZSUyMGJhbmFuYXxlbnwwfHx8fDE3NjQxMjQ0NTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "apple banana"
+    },
+    {
+      "id": "vegetables-category",
+      "description": "Vegetables category icon",
+      "imageUrl": "https://images.unsplash.com/photo-1643786661490-966f1877effa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YnJvY2NvbGklMjBjYXJyb3RzfGVufDB8fHx8MTc2NDEyNDQ1NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "broccoli carrots"
+    },
+    {
+      "id": "bakery-category",
+      "description": "Bakery category icon",
+      "imageUrl": "https://images.unsplash.com/photo-1675998643404-082cd06a792d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxicmVhZCUyMGNyb2lzc2FudHxlbnwwfHx8fDE3NjQxMjQ0NTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "bread croissant"
+    },
+    {
+      "id": "meat-category",
+      "description": "Meat category icon",
+      "imageUrl": "https://images.unsplash.com/photo-1712746785117-6aec15c9f368?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzdGVhayUyMGNoaWNrZW58ZW58MHx8fHwxNzY0MTI0NDU1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "steak chicken"
+    }
+  ]
 }
