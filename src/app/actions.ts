@@ -145,5 +145,7 @@ export async function uploadBillAction(formData: FormData) {
   mockBillItems.push(...newItems);
 
   revalidatePath('/');
+  revalidatePath('/bills');
+  revalidatePath(`/bills/${newBillId}`);
   redirect(`/bills/${newBillId}`);
 }
