@@ -56,7 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 isActive={pathname.startsWith('/bills')}
                 tooltip={{ children: 'Bills' }}
               >
-                <Link href="/bills">
+                <Link href="/">
                   <FileText />
                   <span>Bills</span>
                 </Link>
