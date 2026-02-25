@@ -7,7 +7,8 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "npm run build && node lib/__tests__/normalize.test.js && node lib/__tests__/similarity.test.js"
   },
   "main": "lib/index.js",
   "dependencies": {
