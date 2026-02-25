@@ -63,13 +63,16 @@ function combinedSimilarity(a, b) {
         // Prefix similarity: score is high, but not 1.0, and depends on the length difference
         return 0.9 + 0.1 * (shorter / longer);
     }
-    const tokensA = tokenize(normalizedA);
-    const tokensB = tokenize(normalizedB);
-    const jaccard = jaccardSimilarity(tokensA, tokensB);
     const levenshtein = levenshteinDistance(normalizedA, normalizedB);
     const maxLen = Math.max(normalizedA.length, normalizedB.length);
     const normalizedLevenshtein = maxLen > 0 ? 1 - levenshtein / maxLen : 1.0;
-    // Weighted average, giving more weight to Jaccard similarity
-    return 0.7 * jaccard + 0.3 * normalizedLevenshtein;
+    const tokensA = tokenize(normalizedA);
+    const tokensB = tokenize(normalizedB);
+    if (tokensA.length === 1 && tokensB.length === 1) {
+        return normalizedLevenshtein;
+    }
+    const jaccard = jaccardSimilarity(tokensA, tokensB);
+    // Weighted average
+    return 0.6 * jaccard + 0.4 * normalizedLevenshtein;
 }
 //# sourceMappingURL=similarity.js.map

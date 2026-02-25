@@ -1,15 +1,4 @@
-import { onRequest } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
+import {healthCheck} from "./health";
+import {ocrBill} from "./ocr";
 
-admin.initializeApp();
-
-/**
- * Health check endpoint to verify backend connectivity.
- */
-export const healthCheck = onRequest((request, response) => {
-  response.json({
-    ok: true,
-    service: "billbuddy-backend",
-    timestamp: new Date().toISOString(),
-  });
-});
+export {healthCheck, ocrBill};
