@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeProductName = normalizeProductName;
+exports.normalizeProductName = void 0;
 function normalizeProductName(raw) {
     if (!raw) {
         return "";
@@ -22,4 +22,5 @@ function normalizeProductName(raw) {
     normalized = normalized.replace(/\s+/g, " ").trim();
     return normalized;
 }
+exports.normalizeProductName = normalizeProductName;
 //# sourceMappingURL=normalize.js.map

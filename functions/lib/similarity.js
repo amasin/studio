@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tokenize = tokenize;
-exports.jaccardSimilarity = jaccardSimilarity;
-exports.levenshteinDistance = levenshteinDistance;
-exports.combinedSimilarity = combinedSimilarity;
+exports.combinedSimilarity = exports.levenshteinDistance = exports.jaccardSimilarity = exports.tokenize = void 0;
 const normalize_1 = require("./normalize");
 function tokenize(text) {
     return text.split(/\s+/);
 }
+exports.tokenize = tokenize;
 function jaccardSimilarity(aTokens, bTokens) {
     const aSet = new Set(aTokens);
     const bSet = new Set(bTokens);
@@ -18,6 +16,7 @@ function jaccardSimilarity(aTokens, bTokens) {
     }
     return intersection.size / union.size;
 }
+exports.jaccardSimilarity = jaccardSimilarity;
 function levenshteinDistance(a, b) {
     if (a.length === 0)
         return b.length;
@@ -48,6 +47,7 @@ function levenshteinDistance(a, b) {
     }
     return matrix[b.length][a.length];
 }
+exports.levenshteinDistance = levenshteinDistance;
 function combinedSimilarity(a, b) {
     if (a === b) {
         return 1.0;
@@ -75,4 +75,5 @@ function combinedSimilarity(a, b) {
     // Weighted average
     return 0.6 * jaccard + 0.4 * normalizedLevenshtein;
 }
+exports.combinedSimilarity = combinedSimilarity;
 //# sourceMappingURL=similarity.js.map

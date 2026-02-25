@@ -1,39 +1,28 @@
 export function parseReceipt(ocrText: string): {
-    shopName?: string;
-    purchaseDate?: Date;
-    totals?: { subTotal?: number; tax?: number; totalAmount?: number; currency?: string };
-    items: Array<{ rawName: string; quantity?: number; unit?: string; unitPrice?: number; totalPrice?: number }>;
+  shopName?: string;
+  items: Array<{ rawName: string; quantity: number; unitPrice: number; totalPrice: number }>;
 } {
-    const lines = ocrText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-    const shopName = lines.length > 0 ? lines[0].substring(0, 60) : undefined;
+  const lines = ocrText.split("\n").filter((line) => line.trim().length > 0);
+  const shopName = lines[0]?.substring(0, 60);
 
-    const items: Array<{ rawName: string; quantity?: number; unit?: string; unitPrice?: number; totalPrice?: number }> = [];
+  const items = [];
+  const priceRegex = /(\d+\.\d{2})$/;
 
-    // Simple price regex: looks for a number (optional decimals) at the end of the line
-    const priceRegex = /[\s]+(\d+(?:\.\d{1,2})?)$/;
-
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        const match = line.match(priceRegex);
-
-        if (match) {
-            const price = parseFloat(match[1]);
-            const rawName = line.replace(priceRegex, "").trim();
-
-            if (rawName) {
-                items.push({
-                    rawName,
-                    unitPrice: price,
-                    totalPrice: price,
-                    quantity: 1,
-                    unit: ""
-                });
-            }
-        }
+  for (const line of lines) {
+    const match = line.match(priceRegex);
+    if (match) {
+      const unitPrice = parseFloat(match[1]);
+      const rawName = line.substring(0, match.index).trim();
+      if (rawName) {
+        items.push({
+          rawName,
+          quantity: 1,
+          unitPrice,
+          totalPrice: unitPrice,
+        });
+      }
     }
+  }
 
-    return {
-        shopName,
-        items
-    };
+  return {shopName, items};
 }
