@@ -1,0 +1,499 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Stores information about a user's profile and settings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "homeLocationLatitude": {
+          "type": "number",
+          "description": "The latitude coordinate of the user's home location."
+        },
+        "homeLocationLongitude": {
+          "type": "number",
+          "description": "The longitude coordinate of the user's home location."
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "email",
+        "createdAt",
+        "homeLocationLatitude",
+        "homeLocationLongitude"
+      ]
+    },
+    "Shop": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Shop",
+      "type": "object",
+      "description": "Represents a physical shop where bills are issued.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Shop entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the shop."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the shop."
+        },
+        "locationLatitude": {
+          "type": "number",
+          "description": "The latitude coordinate of the shop's location."
+        },
+        "locationLongitude": {
+          "type": "number",
+          "description": "The longitude coordinate of the shop's location."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the shop record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address",
+        "locationLatitude",
+        "locationLongitude",
+        "createdAt"
+      ]
+    },
+    "Bill": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bill",
+      "type": "object",
+      "description": "Represents a bill uploaded by a user, containing details about a purchase.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Bill entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Bill)"
+        },
+        "shopId": {
+          "type": "string",
+          "description": "Reference to Shop. (Relationship: Shop 1:N Bill)"
+        },
+        "billImagePath": {
+          "type": "string",
+          "description": "Path or URL to the uploaded bill image.",
+          "format": "uri"
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "The date and time of the purchase as indicated on the bill.",
+          "format": "date-time"
+        },
+        "subTotal": {
+          "type": "number",
+          "description": "The subtotal amount of the bill before tax."
+        },
+        "tax": {
+          "type": "number",
+          "description": "The tax amount applied to the bill."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount of the bill including tax."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the bill (e.g., 'INR', 'USD')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the bill record was created.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The processing status of the bill image.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "shopId",
+        "billImagePath",
+        "purchaseDate",
+        "subTotal",
+        "tax",
+        "totalAmount",
+        "currency",
+        "createdAt",
+        "status"
+      ]
+    },
+    "BillItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BillItem",
+      "type": "object",
+      "description": "Represents an individual item extracted from a bill.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BillItem entity."
+        },
+        "billId": {
+          "type": "string",
+          "description": "Reference to Bill. (Relationship: Bill 1:N BillItem)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N BillItem)"
+        },
+        "shopId": {
+          "type": "string",
+          "description": "Reference to Shop. (Relationship: Shop 1:N BillItem)"
+        },
+        "rawName": {
+          "type": "string",
+          "description": "The original name of the item as extracted from the bill."
+        },
+        "normalizedName": {
+          "type": "string",
+          "description": "The normalized name of the item for consistent comparisons."
+        },
+        "category": {
+          "type": "string",
+          "description": "The categorized group of the item (e.g., 'Groceries', 'Electronics')."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the item purchased."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The unit of measurement for the item (e.g., 'kg', 'piece', 'liter')."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The price per unit of the item."
+        },
+        "totalPrice": {
+          "type": "number",
+          "description": "The total price for this item (quantity * unitPrice)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the bill item record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "billId",
+        "userId",
+        "shopId",
+        "rawName",
+        "normalizedName",
+        "category",
+        "quantity",
+        "unit",
+        "unitPrice",
+        "totalPrice",
+        "createdAt"
+      ]
+    },
+    "ShopItemStat": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ShopItemStat",
+      "type": "object",
+      "description": "Aggregated statistics for a specific normalized item within a particular shop.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ShopItemStat entity, typically a composite of shopId and normalizedName."
+        },
+        "shopId": {
+          "type": "string",
+          "description": "Reference to Shop. (Relationship: Shop 1:N ShopItemStat)"
+        },
+        "normalizedName": {
+          "type": "string",
+          "description": "The normalized name of the item this statistic refers to."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the item."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The unit of measurement for the item."
+        },
+        "minUnitPrice": {
+          "type": "number",
+          "description": "The minimum unit price recorded for this item in this shop."
+        },
+        "avgUnitPrice": {
+          "type": "number",
+          "description": "The average unit price recorded for this item in this shop."
+        },
+        "lastUpdatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update to these statistics.",
+          "format": "date-time"
+        },
+        "occurrences": {
+          "type": "number",
+          "description": "The number of times this item has been recorded in this shop."
+        }
+      },
+      "required": [
+        "id",
+        "shopId",
+        "normalizedName",
+        "category",
+        "unit",
+        "minUnitPrice",
+        "avgUnitPrice",
+        "lastUpdatedAt",
+        "occurrences"
+      ]
+    },
+    "GlobalItemStat": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GlobalItemStat",
+      "type": "object",
+      "description": "Aggregated global statistics for a specific normalized item across all shops.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GlobalItemStat entity, which is the normalized product name itself."
+        },
+        "normalizedName": {
+          "type": "string",
+          "description": "The normalized name of the item, serving as its unique identifier."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the item."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The unit of measurement for the item."
+        },
+        "minUnitPrice": {
+          "type": "number",
+          "description": "The minimum unit price recorded globally for this item."
+        },
+        "avgUnitPrice": {
+          "type": "number",
+          "description": "The average unit price recorded globally for this item."
+        },
+        "occurrences": {
+          "type": "number",
+          "description": "The total number of times this item has been recorded globally."
+        },
+        "lastUpdatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update to these global statistics.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "normalizedName",
+        "category",
+        "unit",
+        "minUnitPrice",
+        "avgUnitPrice",
+        "occurrences",
+        "lastUpdatedAt"
+      ]
+    },
+    "ItemRawExample": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ItemRawExample",
+      "type": "object",
+      "description": "Stores examples of raw product names associated with a normalized product name.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ItemRawExample entity within a specific normalized product's examples."
+        },
+        "globalItemStatId": {
+          "type": "string",
+          "description": "Reference to GlobalItemStat's ID (normalizedName). (Relationship: GlobalItemStat 1:N ItemRawExample)"
+        },
+        "rawName": {
+          "type": "string",
+          "description": "An example of a raw, unnormalized product name."
+        },
+        "count": {
+          "type": "number",
+          "description": "The number of times this specific raw name has been seen."
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "description": "Timestamp when this raw name was last seen and updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "globalItemStatId",
+        "rawName",
+        "count",
+        "lastSeenAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profiles. Each document is identified by the user's UID. The 'homeLocation' field will be a Firestore GeoPoint type. Users can only read/write their own document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "shops/{shopId}",
+        "definition": {
+          "entityName": "Shop",
+          "schema": {
+            "$ref": "#/backend/entities/Shop"
+          },
+          "description": "Stores details about shops. Each document represents a unique shop. The 'location' field will be a Firestore GeoPoint type. This collection is publicly readable, but only Cloud Functions can write to it.",
+          "params": [
+            {
+              "name": "shopId",
+              "description": "The unique identifier for the shop, often a hash derived from name and address."
+            }
+          ]
+        }
+      },
+      {
+        "path": "bills/{billId}",
+        "definition": {
+          "entityName": "Bill",
+          "schema": {
+            "$ref": "#/backend/entities/Bill"
+          },
+          "description": "Stores uploaded bill information. Each document includes 'userId' for authorization independence. Users can only read/write their own bills. The 'shopId' field links to the shops collection.",
+          "params": [
+            {
+              "name": "billId",
+              "description": "The unique identifier for the bill."
+            }
+          ]
+        }
+      },
+      {
+        "path": "billItems/{billItemId}",
+        "definition": {
+          "entityName": "BillItem",
+          "schema": {
+            "$ref": "#/backend/entities/BillItem"
+          },
+          "description": "Stores individual items extracted from bills. Each document denormalizes 'userId' and 'shopId' for authorization independence and efficient querying. Users can only read/write their own bill items.",
+          "params": [
+            {
+              "name": "billItemId",
+              "description": "The unique identifier for the bill item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "shopItemStats/{shopId}_{normalizedName}",
+        "definition": {
+          "entityName": "ShopItemStat",
+          "schema": {
+            "$ref": "#/backend/entities/ShopItemStat"
+          },
+          "description": "Aggregated statistics for a specific normalized item within a particular shop. Document ID is a composite of shopId and normalizedName. This collection is publicly readable, but only Cloud Functions can write to it.",
+          "params": [
+            {
+              "name": "shopId_normalizedName",
+              "description": "A composite identifier combining the shopId and the normalizedName of the item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "globalItemStats/{normalizedName}",
+        "definition": {
+          "entityName": "GlobalItemStat",
+          "schema": {
+            "$ref": "#/backend/entities/GlobalItemStat"
+          },
+          "description": "Aggregated global statistics for a specific normalized item across all shops. Document ID is the normalizedName. This collection is publicly readable, but only Cloud Functions can write to it.",
+          "params": [
+            {
+              "name": "normalizedName",
+              "description": "The normalized name of the item, serving as the document ID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "itemRawExamples/{normalizedName}/examples/{exampleId}",
+        "definition": {
+          "entityName": "ItemRawExample",
+          "schema": {
+            "$ref": "#/backend/entities/ItemRawExample"
+          },
+          "description": "Subcollection storing examples of raw product names for a given normalized product. Each document includes 'globalItemStatId' (which is the parent normalizedName) for explicit linkage and authorization independence. This collection is publicly readable, but only Cloud Functions can write to it.",
+          "params": [
+            {
+              "name": "normalizedName",
+              "description": "The normalized name of the item, serving as the parent document ID."
+            },
+            {
+              "name": "exampleId",
+              "description": "The unique identifier for a specific raw example."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure prioritizes Authorization Independence, Structural Segregation, and clear Access Modeling to ensure security, scalability, and debuggability. \n\n**Authorization Independence:**\n1.  **Users (`users/{userId}`):** This collection uses path-based ownership, where the `userId` in the path directly corresponds to `request.auth.uid`. Rules can directly check `userId == request.auth.uid` without `get()`. \n2.  **Bills (`bills/{billId}`):** Although not a subcollection of `users`, each `bill` document explicitly includes a `userId` field. This denormalization allows security rules to check `resource.data.userId == request.auth.uid` directly, eliminating the need for `get()` calls to a parent `user` document. This enables atomic creation and update operations on bills. \n3.  **Bill Items (`billItems/{billItemId}`):** Each `billItem` document denormalizes both `userId` and `shopId`. This is critical. Without `userId` here, a rule would need to `get()` the parent `bill` document to ascertain ownership, violating Authorization Independence. By including `userId` and `shopId` directly, security rules can evaluate access for `billItems` independently, checking `resource.data.userId == request.auth.uid`. This allows a user to query their `billItems` across different bills or specific `billItems` without needing to fetch the `bill` first. \n4.  **Aggregated Data (`shops`, `shopItemStats`, `globalItemStats`, `itemRawExamples`):** These collections are designed for public read access and Cloud Function-only writes. Their authorization is independent because no `get()` calls are required to check user-specific permissions. Writes are restricted via `request.auth.token.admin == true`, assuming Cloud Functions operate with administrative privileges, making the write operations entirely independent of user-specific data or hierarchical checks. `itemRawExamples` includes `globalItemStatId` for explicit linkage and clarity, though `normalizedName` from the path would also serve. \n\n**QAPs (Query as a Principle) Support:**\n1.  **`users/{userId}`:** Users can only read their own profile (`request.auth.uid == userId`). `list` operations on `/users` are not permitted for regular users, preventing data leakage and upholding QAPs by not requiring server-side filtering. \n2.  **`bills/{billId}`:** Users can `list` their own bills by querying `bills` collection with `where('userId', '==', request.auth.uid)`. The security rules will enforce that `list` queries must include this filter. This adheres to QAPs because the rule ensures that any `list` operation explicitly requests only authorized data. \n3.  **`billItems/{billItemId}`:** Similarly, users can `list` their `billItems` by querying `billItems` with `where('userId', '==', request.auth.uid)`. The denormalized `userId` field allows this efficient and secure client-side filtering, fully supporting QAPs. \n4.  **`shops` and Aggregated Collections:** These are designed for public read access, meaning any authenticated or unauthenticated user can `list` or `get` documents without restriction. This is a clear security posture, making QAPs trivial as no filtering is required from the rules perspective; all data is intended to be public. Writes are strictly forbidden for clients, ensuring data integrity.\n\n**Structural Segregation:**\nEach collection is designed with a specific security posture: private (users, bills, billItems), or public read/function-write (shops, aggregations). This clear segregation simplifies security rules significantly, as rules don't need complex logic to differentiate between different types of data within the same collection. For example, `shops` don't contain user-private details, and `bills` don't contain public information.\n\nThis design leverages the core principles to create a robust, secure, and performant Firestore structure suitable for the BillBuddy Savings application."
+  }
+}

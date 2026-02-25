@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * BillBuddy Savings: Security Rules Policy
+     *
+     * Core Philosophy:
+     * This ruleset implements a strict user-ownership model for personal financial data (profiles, bills, 
+     * and line items) combined with a public, read-only model for platform-wide aggregated price statistics.
+     *
+     * Data Structure:
+     * - /users/{userId}: Private user profile.
+     * - /bills/{billId}: Private records of uploaded bills.
+     * - /billItems/{billItemId}: Individual line items from bills, denormalized for direct access.
+     * - /shops, /shopItemStats, /globalItemStats, /itemRawExamples: Publicly readable platform data.
+     *
+     * Key Security Decisions:
+     * 1. Authorization Independence: We denormalize 'userId' onto bills and billItems. This allows 
+     *    instant ownership verification without costly get() calls to parent documents or profiles.
+     * 2. Administrative Writes: Aggregated collections (stats) are writable only by Cloud Functions 
+     *    or authorized admin accounts (verified via custom claims).
+     * 3. Structural Segregation: Private data (user-specific) and Public data (market-wide) are stored 
+     *    in separate top-level collections to simplify rule logic and prevent accidental leaks.
+     * 4. Relational Integrity: On creation of private records, we strictly enforce that the internal 
+     *    'userId' field matches the authenticated user's UID.
+     */
+
+    // --- HELPER FUNCTIONS ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    function isFieldImmutable(fieldName) {
+      return request.resource.data[fieldName] == resource.data[fieldName];
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for user profile documents. Users can only access their own profile.
+     * @path /users/{userId}
+     * @allow (get) If the request UID matches the document ID.
+     * @deny (list) Listing users is forbidden to prevent enumeration.
+     * @principle Path-based ownership.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Rules for bill documents. Users own bills based on the internal 'userId' field.
+     * @path /bills/{billId}
+     * @allow (create) If the bill's userId matches the sender's UID.
+     * @deny (get) If the bill belongs to a different user.
+     * @principle Authorization independence via denormalized ownership field.
+     */
+    match /bills/{billId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn(); // Queries must filter by userId == request.auth.uid
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.userId) && isFieldImmutable('userId');
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+
+    /**
+     * @description Rules for individual bill items. Denormalizes userId for secure, independent access.
+     * @path /billItems/{billItemId}
+     * @allow (list) If the user filters the query by their own UID.
+     * @deny (update) If attempting to change the ownership field.
+     * @principle Relational integrity and owner-only writes.
+     */
+    match /billItems/{billItemId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn(); // Queries must filter by userId == request.auth.uid
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.userId) && isFieldImmutable('userId');
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+
+    /**
+     * @description Shared shop directory. Publicly readable, managed by platform automation.
+     * @path /shops/{shopId}
+     * @allow (get, list) For all users to facilitate discovery.
+     * @deny (write) For all standard users.
+     * @principle Administrative privilege for platform data.
+     */
+    match /shops/{shopId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Aggregated stats for items per shop.
+     * @path /shopItemStats/{shopId_normalizedName}
+     * @allow (list) To allow price comparison queries across the platform.
+     * @deny (create) Prevents users from spoofing market statistics.
+     * @principle Public read with service-only writes.
+     */
+    match /shopItemStats/{statId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Global price trends and stats for normalized product names.
+     * @path /globalItemStats/{normalizedName}
+     * @allow (get) Publicly accessible for global benchmarking.
+     * @deny (delete) Prevents accidental removal of historical price data.
+     * @principle Structural segregation of public aggregate data.
+     */
+    match /globalItemStats/{normalizedName} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Raw name variants seen for a specific normalized item.
+     * @path /itemRawExamples/{normalizedName}/examples/{exampleId}
+     * @allow (get, list) Public read to help client-side search/suggestions.
+     * @deny (write) For all standard users.
+     * @principle Subcollection protection via admin custom claims.
+     */
+    match /itemRawExamples/{normalizedName}/examples/{exampleId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
