@@ -1,112 +1,120 @@
 import * as logger from "firebase-functions/logger";
-import {onObjectFinalized} from "firebase-functions/v2/storage";
-import {ImageAnnotatorClient} from "@google-cloud/vision";
-import {db} from "./firebase";
-import {normalizeProductName} from "./normalize";
+import { onObjectFinalized } from "firebase-functions/v2/storage";
+import { ImageAnnotatorClient } from "@google-cloud/vision";
+import { FieldValue } from "firebase-admin/firestore";
 import * as crypto from "crypto";
-import {parseOcrText} from "./ocr-parser";
+import { db } from "./firebase";
+import { normalizeProductName } from "./normalize";
+import { parseReceipt } from "./receiptParser";
 
 const visionClient = new ImageAnnotatorClient();
 
-export const ocrBill = onObjectFinalized({
+export const processBillUpload = onObjectFinalized({
   region: "us-central1",
-  cpu: "gcf_gen1",
-  timeoutSeconds: 300,
-  memory: "512MiB",
 }, async (event) => {
-  const {bucket, name: filePath, contentType} = event.data;
+  const { bucket, name: filePath, contentType } = event.data;
 
   if (!contentType?.startsWith("image/")) {
     logger.info(`Ignoring non-image file: ${filePath}`);
     return;
   }
 
+  // bills/{userId}/{billId}.jpg
   const pathParts = filePath.split("/");
-  if (pathParts[0] !== "bills") {
-    logger.info(`Ignoring file outside of bills folder: ${filePath}`);
+  if (pathParts[0] !== "bills" || pathParts.length < 3) {
+    logger.info(`Ignoring file outside of bills folder structure: ${filePath}`);
     return;
   }
+
   const userId = pathParts[1];
-  const billId = pathParts[2].split(".")[0];
+  const billFileName = pathParts[2];
+  const billId = billFileName.split(".")[0];
 
   logger.info(`Processing bill: ${billId} for user: ${userId}`);
 
   const billRef = db.collection("bills").doc(billId);
 
   try {
-    // 1. Set initial status
+    // 1. Initial status update
     await billRef.set({
       userId,
       billImagePath: filePath,
-      createdAt: new Date(),
+      createdAt: FieldValue.serverTimestamp(),
       status: "pending_ocr",
+      ocrStartedAt: FieldValue.serverTimestamp(),
       currency: "INR",
-    }, {merge: true});
+    }, { merge: true });
 
-
-    // 2. Run OCR
+    // 2. OCR Call
     const [result] = await visionClient.documentTextDetection(`gs://${bucket}/${filePath}`);
     const fullText = result.fullTextAnnotation?.text;
+
     if (!fullText) {
-      throw new Error("No text found in image.");
+        throw new Error("No text found in the image.");
     }
 
-    // 3. Store OCR text preview
-    await billRef.update({ocrTextPreview: fullText.substring(0, 1000)});
-    logger.info(`OCR text preview stored for bill: ${billId}. Length: ${fullText.length}`);
+    // 3. Parsing
+    const parsedData = parseReceipt(fullText);
+    const ocrTextPreview = fullText.substring(0, 1000);
 
+    // 4. Shop Handling
+    let shopId = "unknown";
+    if (parsedData.shopName) {
+        const normalizedShopName = parsedData.shopName.toLowerCase().trim();
+        shopId = crypto.createHash("sha256").update(normalizedShopName).digest("hex").substring(0, 16);
 
-    // 4. Parse OCR text to extract items
-    const parsedItems = parseOcrText(fullText);
+        await db.collection("shops").doc(shopId).set({
+            name: parsedData.shopName,
+            address: "",
+            createdAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
 
-
-    // 5. Delete existing items for idempotency
+    // 5. Bill Items (Idempotent cleanup then write)
     const existingItems = await db.collection("billItems").where("billId", "==", billId).get();
-    const deletePromises = existingItems.docs.map((doc) => doc.ref.delete());
-    await Promise.all(deletePromises);
+    const batch = db.batch();
+    existingItems.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
 
+    const writeBatch = db.batch();
+    const itemsToSave = parsedData.items.length > 0 ? parsedData.items : [{ rawName: "unknown item", unitPrice: 0 }];
 
-    // 6. Create new bill items
-    const shopId = crypto.createHash("md5").update("default_shop").digest("hex"); // Placeholder
-    const itemPromises = parsedItems.map((item, index) => {
-      const billItemId = `${billId}_${index}`;
-      return db.collection("billItems").doc(billItemId).set({
-        ...item,
-        billId,
-        userId,
-        shopId,
-        normalizedName: normalizeProductName(item.rawName),
-        category: "unknown",
-        createdAt: new Date(),
-      });
+    itemsToSave.forEach((item, index) => {
+        const billItemId = `${billId}_${index}`;
+        const itemRef = db.collection("billItems").doc(billItemId);
+        writeBatch.set(itemRef, {
+            billId,
+            userId,
+            shopId,
+            rawName: item.rawName,
+            normalizedName: normalizeProductName(item.rawName),
+            category: "unknown",
+            quantity: item.quantity || 1,
+            unit: item.unit || "",
+            unitPrice: item.unitPrice || 0,
+            totalPrice: item.totalPrice || (item.unitPrice || 0) * (item.quantity || 1),
+            createdAt: FieldValue.serverTimestamp(),
+        });
     });
-    await Promise.all(itemPromises);
+    await writeBatch.commit();
 
-
-    // 7. Upsert shop
-    await db.collection("shops").doc(shopId).set({
-      name: "Default Shop",
-      createdAt: new Date(),
-    }, {merge: true});
-
-
-    // 8. Update bill status to processed
-    const updatePayload: any = {
-      status: "processed",
-      processedAt: new Date(),
-    };
-    if (parsedItems.length === 1 && parsedItems[0].rawName === "unknown item") {
-      updatePayload.parseWarning = "NO_ITEMS_PARSED";
-    }
-    await billRef.update(updatePayload);
+    // 6. Success final status
+    await billRef.update({
+        status: "processed",
+        processedAt: FieldValue.serverTimestamp(),
+        ocrTextPreview,
+        shopId,
+        parseWarning: parsedData.items.length === 0 ? "NO_ITEMS_PARSED" : null,
+    });
 
     logger.info(`Successfully processed bill: ${billId}`);
-  } catch (error) {
-    logger.error("Error processing bill:", error);
+
+  } catch (error: any) {
+    logger.error(`Error processing bill ${billId}:`, error);
     await billRef.update({
       status: "failed",
-      errorMessage: (error as Error).message,
-      failedAt: new Date(),
+      errorMessage: error.message || "Unknown error during OCR processing",
+      failedAt: FieldValue.serverTimestamp(),
     });
   }
 });

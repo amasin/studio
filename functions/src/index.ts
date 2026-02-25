@@ -1,4 +1,4 @@
-import {healthCheck} from "./health";
-import {ocrBill} from "./ocr";
+import { healthCheck } from "./health";
+import { processBillUpload } from "./ocr";
 
-export {healthCheck, ocrBill};
+export { healthCheck, processBillUpload };

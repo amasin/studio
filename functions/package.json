@@ -9,7 +9,7 @@
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "npm run build && node lib/__tests__/normalize.test.js && node lib/__tests__/similarity.test.js && node lib/__tests__/ocr.test.js"
+    "test": "npm run build && node lib/__tests__/normalize.test.js && node lib/__tests__/similarity.test.js && node lib/__tests__/receiptParser.test.js"
   },
   "engines": {
     "node": "20"
@@ -17,7 +17,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "firebase-admin": "^12.0.0",
-    "firebase-functions": "^5.0.0",
+    "firebase-functions": "^5.0.1",
     "@google-cloud/vision": "^4.0.2"
   },
   "devDependencies": {
