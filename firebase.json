@@ -24,10 +24,14 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "functions/**"
     ],
     "frameworksBackend": {
       "region": "us-central1"
     }
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
