@@ -1,5 +1,4 @@
-import { auth, functions } from "./firebaseClient";
-import { httpsCallable } from "firebase/functions";
+import { auth } from "./firebaseClient";
 
 const getAuthHeader = async () => {
   const user = auth.currentUser;
@@ -13,28 +12,68 @@ const getAuthHeader = async () => {
 };
 
 const getFunctionUrl = (name: string) => {
-    const region = 'us-central1';
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    return `https://${region}-${projectId}.cloudfunctions.net/${name}`;
-}
+  const region = process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_REGION || 'us-central1';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
+  const emulatorHost = process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_HOST || 'localhost:5001';
 
-export const getBillComparison = async (billId: string) => {
+  if (useEmulators) {
+    // Emulator URL format: http://localhost:5001/<projectId>/<region>/<functionName>
+    return `http://${emulatorHost}/${projectId}/${region}/${name}`;
+  }
+
+  // Production URL format: https://<region>-<projectId>.cloudfunctions.net/<functionName>
+  return `https://${region}-${projectId}.cloudfunctions.net/${name}`;
+};
+
+/**
+ * Enhanced fetch helper that handles auth tokens and surfaces better error info.
+ */
+const apiFetch = async (functionName: string, queryParams: Record<string, string> = {}) => {
   const headers = await getAuthHeader();
-  const url = getFunctionUrl('getBillComparison');
-  const response = await fetch(`${url}?billId=${billId}`, { headers });
+  const baseUrl = getFunctionUrl(functionName);
+  const url = new URL(baseUrl);
+  
+  Object.entries(queryParams).forEach(([key, value]) => {
+    url.searchParams.append(key, value);
+  });
+
+  const response = await fetch(url.toString(), { 
+    headers,
+    method: 'GET' // Default to GET for these specific APIs
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorJson;
+    try {
+      errorJson = JSON.parse(errorText);
+    } catch (e) {
+      errorJson = { message: errorText };
+    }
+    throw new Error(`API Error (${response.status} ${response.statusText}): ${errorJson.error?.message || errorJson.message || 'Unknown error'}`);
+  }
+
   return response.json();
 };
 
+export const getBillComparison = async (billId: string) => {
+  return apiFetch('getBillComparison', { billId });
+};
+
 export const getCheapestShopsForItem = async (normalizedName: string, lat: number, lng: number, radiusKm: number = 5) => {
-    const headers = await getAuthHeader();
-    const url = getFunctionUrl('getCheapestShopsForItem');
-    const response = await fetch(`${url}?normalizedName=${normalizedName}&lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`, { headers });
-    return response.json();
+  return apiFetch('getCheapestShopsForItem', { 
+    normalizedName, 
+    lat: lat.toString(), 
+    lng: lng.toString(), 
+    radiusKm: radiusKm.toString() 
+  });
 };
 
 export const getSimilarProducts = async (normalizedName: string, category: string) => {
-    const headers = await getAuthHeader();
-    const url = getFunctionUrl('getSimilarProducts');
-    const response = await fetch(`${url}?normalizedName=${normalizedName}&category=${category}`, { headers });
-    return response.json();
+  return apiFetch('getSimilarProducts', { normalizedName, category });
+};
+
+export const pingHealthCheck = async () => {
+  return apiFetch('healthCheck');
 };

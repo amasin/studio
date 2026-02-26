@@ -15,29 +15,16 @@ The application allows users to upload photos of their receipts. The backend use
 - **Icons**: Lucide React
 - **OCR**: Google Cloud Vision API
 
-## 🏗 Architecture
+## 🔧 Environment Setup
 
-The application is built on a serverless architecture using Firebase.
-
-- **Frontend**: Next.js client-side application.
-- **Authentication**: Firebase Authentication (Google Sign-In).
-- **Database**: Firestore for user profiles, bills, items, and price statistics.
-- **File Storage**: Firebase Storage for bill images.
-- **Cloud Functions**: 
-  - **OCR Pipeline**: Triggered on upload, parses receipts and updates aggregations.
-  - **HTTPS APIs**: Comparison, nearby search, and product suggestions.
-
-## 🔒 Security Rules
-
-Production-grade security is enforced via Firebase Security Rules:
-- **Authorization**: All private data is locked to the authenticated owner (`request.auth.uid`).
-- **Query Constraints**: List operations on `bills` and `billItems` MUST include a filter on `userId` to satisfy security constraints.
-- **Public Data**: Shop directories and aggregated price stats are publicly readable but only writable by administrative functions (Cloud Functions).
+1. Copy `.env.local.example` to `.env.local`.
+2. Fill in your Firebase Project configuration details.
+3. If using emulators, set `NEXT_PUBLIC_USE_EMULATORS=true`.
 
 ## 💻 Local Development
 
 ### 1. Prerequisites
-- Node.js 18+
+- Node.js 20+
 - Firebase CLI (`npm install -g firebase-tools`)
 
 ### 2. Setup
@@ -49,7 +36,7 @@ npm install
 npm run build
 ```
 
-### 3. Firebase Emulator (Local Development)
+### 3. Firebase Emulator
 Start the Firebase local emulator to test Firestore, Functions, and Storage locally:
 ```bash
 # Start emulators
@@ -61,11 +48,19 @@ firebase emulators:start
 npm run dev
 ```
 
-### 5. Port Configuration
-- In **Cloud Workstations**, the preview expects the app on port **9000**.
-- For **production** (Firebase App Hosting / Cloud Run), the `PORT` is provided (usually `8080`).
+### 5. Diagnostics
+Visit `/diagnostics` while signed in to smoke-test your Firebase connection and environment variables.
+
+## 🔒 Security Rules
+
+Production-grade security is enforced via Firebase Security Rules:
+- **Authorization**: All private data is locked to the authenticated owner (`request.auth.uid`).
+- **Query Constraints**: List operations on `bills` and `billItems` MUST include a filter on `userId` to satisfy security constraints.
+- **Public Data**: Shop directories and aggregated price stats are publicly readable but only writable by administrative functions (Cloud Functions).
 
 ## 🚢 Deployment
 
-### Deploy to Firebase App Hosting
-The project is configured for Firebase App Hosting via `apphosting.yaml`. Deployment occurs automatically via GitHub integration or manual CLI deployment.
+Deployment occurs via Firebase App Hosting or standard Hosting + Functions.
+```bash
+firebase deploy
+```

@@ -20,19 +20,37 @@ let db: Firestore;
 let storage: FirebaseStorage;
 let functions: Functions;
 
-if (typeof window !== "undefined") {
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-  functions = getFunctions(app);
+// Idempotent initialization
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-  if (process.env.NODE_ENV === 'development') {
-    // Connect to emulators
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    connectFirestoreEmulator(db, '127.0.0.1', 8080);
-    connectFunctionsEmulator(functions, '127.0.0.1', 4000);
-    connectStorageEmulator(storage, '127.0.0.1', 9199);
+auth = getAuth(app);
+db = getFirestore(app);
+storage = getStorage(app);
+functions = getFunctions(app);
+
+// Emulator support
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_EMULATORS === "true") {
+  const firestoreHost = process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST || 'localhost:8080';
+  const authHost = process.env.NEXT_PUBLIC_AUTH_EMULATOR_HOST || 'http://localhost:9099';
+  const storageHost = process.env.NEXT_PUBLIC_STORAGE_EMULATOR_HOST || 'localhost:9199';
+  const functionsHost = process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_HOST || 'localhost:5001';
+
+  try {
+    // Only connect if not already connected (Firebase JS SDK handles some internal state, but double-connection throws)
+    // In dev mode with HMR, we should be careful.
+    if (!(auth as any)._emulatorConfig) {
+      connectAuthEmulator(auth, authHost, { disableWarnings: true });
+      connectFirestoreEmulator(db, firestoreHost.split(':')[0], parseInt(firestoreHost.split(':')[1]));
+      connectStorageEmulator(storage, storageHost.split(':')[0], parseInt(storageHost.split(':')[1]));
+      connectFunctionsEmulator(functions, functionsHost.split(':')[0], parseInt(functionsHost.split(':')[1]));
+      console.log("Connected to Firebase Emulators");
+    }
+  } catch (e) {
+    console.warn("Emulator connection warning:", e);
   }
 }
 
