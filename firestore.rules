@@ -3,27 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * BillBuddy Savings: Security Rules Policy
+     * BillBuddy Savings: Production Security Rules
      *
      * Core Philosophy:
-     * This ruleset implements a strict user-ownership model for personal financial data (profiles, bills, 
-     * and line items) combined with a public, read-only model for platform-wide aggregated price statistics.
-     *
-     * Data Structure:
-     * - /users/{userId}: Private user profile.
-     * - /bills/{billId}: Private records of uploaded bills.
-     * - /billItems/{billItemId}: Individual line items from bills, denormalized for direct access.
-     * - /shops, /shopItemStats, /globalItemStats, /itemRawExamples: Publicly readable platform data.
-     *
-     * Key Security Decisions:
-     * 1. Authorization Independence: We denormalize 'userId' onto bills and billItems. This allows 
-     *    instant ownership verification without costly get() calls to parent documents or profiles.
-     * 2. Administrative Writes: Aggregated collections (stats) are writable only by Cloud Functions 
-     *    or authorized admin accounts (verified via custom claims).
-     * 3. Structural Segregation: Private data (user-specific) and Public data (market-wide) are stored 
-     *    in separate top-level collections to simplify rule logic and prevent accidental leaks.
-     * 4. Relational Integrity: On creation of private records, we strictly enforce that the internal 
-     *    'userId' field matches the authenticated user's UID.
+     * 1. Strict Ownership: Users can only read/write data where userId matches their UID.
+     * 2. Query Enforcement: List operations MUST include a filter on userId to prevent data leakage.
+     * 3. Administrative Control: Aggregated statistics are read-only for clients and writable only by admins.
+     * 4. Public Discovery: Shop details and price trends are publicly accessible for transparency.
      */
 
     // --- HELPER FUNCTIONS ---
@@ -40,107 +26,81 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    function isFieldImmutable(fieldName) {
-      return request.resource.data[fieldName] == resource.data[fieldName];
-    }
-
     // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for user profile documents. Users can only access their own profile.
      * @path /users/{userId}
-     * @allow (get) If the request UID matches the document ID.
-     * @deny (list) Listing users is forbidden to prevent enumeration.
-     * @principle Path-based ownership.
+     * Owners only. No listing allowed to prevent user enumeration.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get, create, update, delete: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Rules for bill documents. Users own bills based on the internal 'userId' field.
      * @path /bills/{billId}
-     * @allow (create) If the bill's userId matches the sender's UID.
-     * @deny (get) If the bill belongs to a different user.
-     * @principle Authorization independence via denormalized ownership field.
+     * Owners only. Listing is permitted ONLY if the query is filtered by userId.
      */
     match /bills/{billId} {
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn(); // Queries must filter by userId == request.auth.uid
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.userId) && isFieldImmutable('userId');
-      allow delete: if isExistingOwner(resource.data.userId);
+      allow get, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && request.query.limit <= 100 && request.query.offsets == null && request.query.whereField("userId") == request.auth.uid;
     }
 
     /**
-     * @description Rules for individual bill items. Denormalizes userId for secure, independent access.
      * @path /billItems/{billItemId}
-     * @allow (list) If the user filters the query by their own UID.
-     * @deny (update) If attempting to change the ownership field.
-     * @principle Relational integrity and owner-only writes.
+     * Owners only. Denormalized userId allows independent access control.
+     * Listing is permitted ONLY if the query is filtered by userId.
      */
     match /billItems/{billItemId} {
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn(); // Queries must filter by userId == request.auth.uid
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.userId) && isFieldImmutable('userId');
-      allow delete: if isExistingOwner(resource.data.userId);
+      allow get, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && request.query.limit <= 500 && request.query.whereField("userId") == request.auth.uid;
     }
 
     /**
-     * @description Shared shop directory. Publicly readable, managed by platform automation.
      * @path /shops/{shopId}
-     * @allow (get, list) For all users to facilitate discovery.
-     * @deny (write) For all standard users.
-     * @principle Administrative privilege for platform data.
+     * Public directory for discovery. Admin-only writes.
      */
     match /shops/{shopId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     /**
-     * @description Aggregated stats for items per shop.
-     * @path /shopItemStats/{shopId_normalizedName}
-     * @allow (list) To allow price comparison queries across the platform.
-     * @deny (create) Prevents users from spoofing market statistics.
-     * @principle Public read with service-only writes.
+     * @path /shopItemStats/{statId}
+     * Public price stats. Admin-only writes.
      */
     match /shopItemStats/{statId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     /**
-     * @description Global price trends and stats for normalized product names.
      * @path /globalItemStats/{normalizedName}
-     * @allow (get) Publicly accessible for global benchmarking.
-     * @deny (delete) Prevents accidental removal of historical price data.
-     * @principle Structural segregation of public aggregate data.
+     * Global benchmarks. Admin-only writes.
      */
     match /globalItemStats/{normalizedName} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     /**
-     * @description Raw name variants seen for a specific normalized item.
      * @path /itemRawExamples/{normalizedName}/examples/{exampleId}
-     * @allow (get, list) Public read to help client-side search/suggestions.
-     * @deny (write) For all standard users.
-     * @principle Subcollection protection via admin custom claims.
+     * Raw variants for search suggestions. Admin-only writes.
      */
-    match /itemRawExamples/{normalizedName}/examples/{exampleId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+    match /itemRawExamples/{normalizedName} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /examples/{exampleId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    // Default deny for all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -4,7 +4,7 @@ BillBuddy Savings is an AI-powered personal finance application designed to help
 
 ## 🚀 Overview
 
-The application allows users to upload photos of their receipts. The backend uses OCR to extract bill data and provides detailed price comparisons against community averages and nearby stores.
+The application allows users to upload photos of their receipts. The backend uses OCR (Google Cloud Vision) to extract bill data and provides detailed price comparisons against community averages and nearby stores.
 
 ## 🛠 Tech Stack
 
@@ -13,6 +13,26 @@ The application allows users to upload photos of their receipts. The backend use
 - **Styling**: Tailwind CSS
 - **UI Components**: ShadCN UI
 - **Icons**: Lucide React
+- **OCR**: Google Cloud Vision API
+
+## 🏗 Architecture
+
+The application is built on a serverless architecture using Firebase.
+
+- **Frontend**: Next.js client-side application.
+- **Authentication**: Firebase Authentication (Google Sign-In).
+- **Database**: Firestore for user profiles, bills, items, and price statistics.
+- **File Storage**: Firebase Storage for bill images.
+- **Cloud Functions**: 
+  - **OCR Pipeline**: Triggered on upload, parses receipts and updates aggregations.
+  - **HTTPS APIs**: Comparison, nearby search, and product suggestions.
+
+## 🔒 Security Rules
+
+Production-grade security is enforced via Firebase Security Rules:
+- **Authorization**: All private data is locked to the authenticated owner (`request.auth.uid`).
+- **Query Constraints**: List operations on `bills` and `billItems` MUST include a filter on `userId` to satisfy security constraints.
+- **Public Data**: Shop directories and aggregated price stats are publicly readable but only writable by administrative functions (Cloud Functions).
 
 ## 💻 Local Development
 
@@ -43,28 +63,5 @@ npm run dev
 
 ## 🚢 Deployment
 
-### Deploy to Firebase
-```bash
-# Login to Firebase
-firebase login
-
-# Set your project ID
-firebase use your-project-id
-
-# Deploy everything
-firebase deploy
-```
-
-## 🏗 Architecture
-
-The application is built on a serverless architecture using Firebase.
-
-- **Frontend**: A Next.js application for the user interface.
-- **Authentication**: Firebase Authentication handles user sign-up and login.
-- **Database**: Firestore stores user profiles, bills, items, and aggregated price statistics.
-- **File Storage**: Firebase Storage stores uploaded bill images.
-- **Backend Logic**: Firebase Functions, triggered by image uploads, handle the entire backend process:
-  - **OCR**: Google Cloud Vision API extracts text from bill images.
-  - **Data Processing**: Deterministic normalization and enrichment of the extracted data.
-  - **APIs**: HTTPS-callable functions provide the frontend with data for price comparisons and product suggestions.
-- **Security**: Firestore and Storage security rules enforce strict data ownership, ensuring users can only access their own financial data.
+### Deploy to Firebase App Hosting
+The project is configured for Firebase App Hosting via `apphosting.yaml`. Deployment occurs automatically via GitHub integration or manual CLI deployment.

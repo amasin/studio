@@ -1,8 +1,8 @@
 'use client';
 
 import withAuth from '@/components/withAuth';
-import { useEffect, useState } from 'react';
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { useEffect, useState, useMemo } from 'react';
+import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/lib/auth';
 import {
@@ -16,7 +16,7 @@ import { FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import BillItemsList from '@/components/bill-items-list';
 import { Button } from '@/components/ui/button';
-import { getBillComparison, getCheapestShopsForItem, getSimilarProducts } from '@/lib/functionsApi';
+import { getBillComparison } from '@/lib/functionsApi';
 
 function BillDetailPage({ params }: { params: { billId: string } }) {
   const { user } = useAuth();
@@ -32,14 +32,14 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
       const unsubscribeBill = onSnapshot(billDocRef, (doc) => {
         if (doc.exists()) {
           setBill({ id: doc.id, ...doc.data() });
-        } else {
-          // Handle case where bill is not found
         }
         setLoading(false);
       });
 
+      // Updated query to satisfy security rules: MUST include userId filter for list operations
       const itemsQuery = query(
         collection(db, 'billItems'),
+        where('userId', '==', user.uid),
         where('billId', '==', params.billId),
         orderBy('createdAt', 'desc')
       );
@@ -60,8 +60,12 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
   }, [user, params.billId]);
 
   const handleCompare = async () => {
-    const data = await getBillComparison(params.billId);
-    setComparisonData(data);
+    try {
+      const data = await getBillComparison(params.billId);
+      setComparisonData(data);
+    } catch (error) {
+      console.error("Comparison failed:", error);
+    }
   };
 
   if (loading) {
@@ -74,17 +78,19 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
 
   const currencyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: bill.currency || 'USD',
+    currency: bill.currency || 'INR',
   });
+
+  const purchaseDate = bill.purchaseDate?.toDate ? bill.purchaseDate.toDate() : new Date();
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold font-headline tracking-tight">
-          {bill.shop?.name}
+          {bill.shopName || 'Processed Bill'}
         </h1>
         <p className="text-muted-foreground">
-          Bill from {format(new Date(bill.purchaseDate.toDate()), 'PPPp')}
+          Bill from {format(purchaseDate, 'PPPp')}
         </p>
       </div>
 
@@ -98,28 +104,34 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currencyFormatter.format(bill.totalAmount)}
+              {currencyFormatter.format(bill.totalAmount || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              including {currencyFormatter.format(bill.tax)} tax
+              Status: <span className="capitalize">{bill.status}</span>
             </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="flex gap-4">
-        <Button onClick={handleCompare}>Compare</Button>
+        <Button onClick={handleCompare} disabled={bill.status !== 'processed'}>
+          {comparisonData ? 'Refresh Comparison' : 'Compare Prices'}
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Bill Items</CardTitle>
           <CardDescription>
-            Click on an item to see price comparisons and similar products.
+            Individual line items extracted from your receipt.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BillItemsList items={items} comparisonData={comparisonData} currency={bill.currency} />
+          <BillItemsList 
+            items={items} 
+            comparisonData={comparisonData?.items || []} 
+            currency={bill.currency || 'INR'} 
+          />
         </CardContent>
       </Card>
     </div>

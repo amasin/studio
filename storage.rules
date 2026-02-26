@@ -1,9 +1,20 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /bills/{userId}/{billId} {
+    
+    /**
+     * BillBuddy Savings: Storage Rules
+     *
+     * Rules protect uploaded bill images.
+     * Path: /bills/{userId}/{fileName}
+     */
+    
+    match /bills/{userId}/{fileName} {
+      // Users can only read/write their own bill images
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Deny all other access by default
     match /{allPaths=**} {
       allow read, write: if false;
     }
