@@ -61,6 +61,10 @@ firebase emulators:start
 npm run dev
 ```
 
+### 5. Port Configuration
+- In **Cloud Workstations**, the preview expects the app on port **9000**.
+- For **production** (Firebase App Hosting / Cloud Run), the `PORT` is provided (usually `8080`).
+
 ## 🚢 Deployment
 
 ### Deploy to Firebase App Hosting
