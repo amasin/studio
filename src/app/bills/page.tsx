@@ -1,8 +1,14 @@
+'use client';
+
+import withAuth from '@/components/withAuth';
+import { useEffect, useState } from 'react';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebaseClient';
+import { useAuth } from '@/lib/auth';
+import BillCard from '@/components/bill-card';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { getBills } from '@/app/actions';
-import BillCard from '@/components/bill-card';
 import {
   Card,
   CardContent,
@@ -11,8 +17,35 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-export default async function BillsPage() {
-  const bills = await getBills();
+function BillsPage() {
+  const { user } = useAuth();
+  const [bills, setBills] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, 'bills'),
+        where('userId', '==', user.uid),
+        orderBy('purchaseDate', 'desc')
+      );
+
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const billsData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setBills(billsData);
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
+    } 
+  }, [user]);
+
+  if (loading) {
+    return <div>Loading bills...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,3 +93,5 @@ export default async function BillsPage() {
     </div>
   );
 }
+
+export default withAuth(BillsPage);

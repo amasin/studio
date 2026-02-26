@@ -1,5 +1,10 @@
-import { notFound } from 'next/navigation';
-import { getBill, getBillComparisonData } from '@/app/actions';
+'use client';
+
+import withAuth from '@/components/withAuth';
+import { useEffect, useState } from 'react';
+import { doc, getDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebaseClient';
+import { useAuth } from '@/lib/auth';
 import {
   Card,
   CardContent,
@@ -10,25 +15,63 @@ import {
 import { FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import BillItemsList from '@/components/bill-items-list';
+import { Button } from '@/components/ui/button';
+import { getBillComparison, getCheapestShopsForItem, getSimilarProducts } from '@/lib/functionsApi';
 
-export default async function BillDetailPage({
-  params,
-}: {
-  params: { billId: string };
-}) {
-  const billDataPromise = getBill(params.billId);
-  const comparisonDataPromise = getBillComparisonData(params.billId);
+function BillDetailPage({ params }: { params: { billId: string } }) {
+  const { user } = useAuth();
+  const [bill, setBill] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [comparisonData, setComparisonData] = useState<any>(null);
 
-  const [billData, comparisonData] = await Promise.all([
-    billDataPromise,
-    comparisonDataPromise,
-  ]);
+  useEffect(() => {
+    if (user) {
+      const billDocRef = doc(db, 'bills', params.billId);
 
-  if (!billData) {
-    notFound();
+      const unsubscribeBill = onSnapshot(billDocRef, (doc) => {
+        if (doc.exists()) {
+          setBill({ id: doc.id, ...doc.data() });
+        } else {
+          // Handle case where bill is not found
+        }
+        setLoading(false);
+      });
+
+      const itemsQuery = query(
+        collection(db, 'billItems'),
+        where('billId', '==', params.billId),
+        orderBy('createdAt', 'desc')
+      );
+
+      const unsubscribeItems = onSnapshot(itemsQuery, (querySnapshot) => {
+        const itemsData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setItems(itemsData);
+      });
+
+      return () => {
+        unsubscribeBill();
+        unsubscribeItems();
+      };
+    }
+  }, [user, params.billId]);
+
+  const handleCompare = async () => {
+    const data = await getBillComparison(params.billId);
+    setComparisonData(data);
+  };
+
+  if (loading) {
+    return <div>Loading bill details...</div>;
   }
 
-  const { bill, items } = billData;
+  if (!bill) {
+    return <div>Bill not found.</div>;
+  }
+
   const currencyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: bill.currency || 'USD',
@@ -41,7 +84,7 @@ export default async function BillDetailPage({
           {bill.shop?.name}
         </h1>
         <p className="text-muted-foreground">
-          Bill from {format(new Date(bill.purchaseDate), 'PPPp')}
+          Bill from {format(new Date(bill.purchaseDate.toDate()), 'PPPp')}
         </p>
       </div>
 
@@ -63,7 +106,11 @@ export default async function BillDetailPage({
           </CardContent>
         </Card>
       </div>
-      
+
+      <div className="flex gap-4">
+        <Button onClick={handleCompare}>Compare</Button>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Bill Items</CardTitle>
@@ -78,3 +125,5 @@ export default async function BillDetailPage({
     </div>
   );
 }
+
+export default withAuth(BillDetailPage);

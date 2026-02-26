@@ -1,7 +1,10 @@
+'use client';
+
+import withAuth from '@/components/withAuth';
 import { BillUploadForm } from "@/components/bill-upload-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function UploadPage() {
+function UploadPage() {
   return (
     <div className="flex justify-center py-12">
       <Card className="w-full max-w-lg">
@@ -18,3 +21,5 @@ export default function UploadPage() {
     </div>
   );
 }
+
+export default withAuth(UploadPage);

@@ -22,6 +22,10 @@ export default function BillCard({ bill }: BillCardProps) {
     currency: bill.currency || 'USD',
   });
 
+  const purchaseDate = bill.purchaseDate && bill.purchaseDate.toDate ? 
+    bill.purchaseDate.toDate() : 
+    new Date(bill.purchaseDate);
+
   return (
     <Link href={`/bills/${bill.id}`} className="group block">
       <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 group-hover:shadow-lg group-hover:-translate-y-1">
@@ -41,12 +45,12 @@ export default function BillCard({ bill }: BillCardProps) {
             {bill.shop?.name}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            {format(new Date(bill.purchaseDate), 'PPP')}
+            {format(purchaseDate, 'PPP')}
           </p>
         </CardContent>
         <CardFooter className="p-4 pt-0">
           <p className="text-xl font-semibold text-primary">
-            {currencyFormatter.format(bill.totalAmount)}
+            {bill.totalAmount ? currencyFormatter.format(bill.totalAmount) : 'Processing...'}
           </p>
         </CardFooter>
       </Card>

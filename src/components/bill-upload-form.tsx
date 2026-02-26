@@ -1,37 +1,23 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
+import { storage, db } from '@/lib/firebaseClient';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UploadCloud, Image as ImageIcon, X, Loader2 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
-import { uploadBillAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Processing...
-        </>
-      ) : (
-        'Scan & Save'
-      )}
-    </Button>
-  );
-}
-
 export function BillUploadForm() {
   const [preview, setPreview] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
 
   const handleFileChange = (files: FileList | null) => {
     if (files && files[0]) {
@@ -62,8 +48,9 @@ export function BillUploadForm() {
     }
   };
   
-  const handleFormSubmit = (formData: FormData) => {
-    if (!formData.get('billImage') || (formData.get('billImage') as File).size === 0) {
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!fileInputRef.current?.files?.[0]) {
         toast({
             variant: "destructive",
             title: "No File Selected",
@@ -71,26 +58,59 @@ export function BillUploadForm() {
         });
         return;
     }
-    startTransition(async () => {
-      const result = await uploadBillAction(formData);
-      if (result?.error) {
+
+    if (!user) {
         toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: result.error,
+            variant: "destructive",
+            title: "Not Authenticated",
+            description: "You must be logged in to upload a bill.",
         });
-      }
-    });
+        return;
+    }
+
+    setIsUploading(true);
+    const file = fileInputRef.current.files[0];
+    const storageRef = ref(storage, `bills/${user.uid}/${Date.now()}_${file.name}`);
+
+    try {
+      const uploadTask = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(uploadTask.ref);
+
+      const docRef = await addDoc(collection(db, 'bills'), {
+        userId: user.uid,
+        imageUrl: downloadURL,
+        status: 'processing',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Upload Successful",
+        description: "Your bill is now being processed.",
+      });
+
+      router.push(`/bills/${docRef.id}`);
+
+    } catch (error) {
+        console.error("Error uploading bill: ", error);
+        toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: "Something went wrong. Please try again.",
+        });
+    } finally {
+        setIsUploading(false);
+    }
   };
 
   return (
-    <form ref={formRef} action={handleFormSubmit} className="space-y-6">
+    <form onSubmit={handleFormSubmit} className="space-y-6">
       <div
         className={cn(
           'relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors',
           { 'p-4': preview }
         )}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
       >
         {preview ? (
           <>
@@ -99,7 +119,7 @@ export function BillUploadForm() {
               alt="Bill preview"
               className="object-contain w-full h-full rounded-md"
             />
-            <Button
+            {!isUploading && <Button
               type="button"
               variant="destructive"
               size="icon"
@@ -111,7 +131,7 @@ export function BillUploadForm() {
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Remove image</span>
-            </Button>
+            </Button>}
           </>
         ) : (
           <div className="text-center">
@@ -127,9 +147,19 @@ export function BillUploadForm() {
           className="hidden"
           accept="image/png, image/jpeg, image/webp"
           onChange={(e) => handleFileChange(e.target.files)}
+          disabled={isUploading}
         />
       </div>
-      <SubmitButton />
+      <Button type="submit" disabled={isUploading || !preview} className="w-full">
+        {isUploading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          'Scan & Save'
+        )}
+      </Button>
     </form>
   );
 }

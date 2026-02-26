@@ -3,6 +3,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/layout/app-shell';
+import { AuthProvider } from '@/lib/auth';
 
 export const metadata: Metadata = {
   title: 'BillBuddy Savings',
@@ -25,7 +26,9 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased h-full bg-background')}>
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>
