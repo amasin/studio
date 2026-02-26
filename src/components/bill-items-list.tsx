@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PriceComparison from './price-comparison';
-import SimilarProductsLoader from './similar-products-loader';
 
 type BillItemsListProps = {
   items: BillItem[];
@@ -40,9 +39,8 @@ export default function BillItemsList({ items, comparisonData, currency }: BillI
             </AccordionTrigger>
             <AccordionContent className="px-4 pt-2">
               <Tabs defaultValue="comparison" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-1">
                   <TabsTrigger value="comparison">Price Comparison</TabsTrigger>
-                  <TabsTrigger value="similar">Similar Products</TabsTrigger>
                 </TabsList>
                 <TabsContent value="comparison" className="pt-4">
                   {comparison ? (
@@ -50,13 +48,6 @@ export default function BillItemsList({ items, comparisonData, currency }: BillI
                   ) : (
                     <p className="text-center text-sm text-muted-foreground py-8">No comparison data available.</p>
                   )}
-                </TabsContent>
-                <TabsContent value="similar" className="pt-4">
-                  <SimilarProductsLoader 
-                    normalizedName={item.normalizedName} 
-                    category={item.category} 
-                    currency={currency}
-                  />
                 </TabsContent>
               </Tabs>
             </AccordionContent>

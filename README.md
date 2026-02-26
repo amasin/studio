@@ -4,19 +4,12 @@ BillBuddy Savings is an AI-powered personal finance application designed to help
 
 ## 🚀 Overview
 
-The application allows users to upload photos of their receipts. It uses OCR to extract data and provides detailed price comparisons against community averages and nearby stores.
-
-### Backend Note
-- This repo currently contains the UI prototype. 
-- The backend (Functions, OCR, and APIs) will be implemented in subsequent steps.
-- **OCR Strategy**: We will use Google Cloud Vision for robust data extraction (not GenAI-based OCR).
-- **Normalization**: Product name normalization will be deterministic (regex and string-based) to ensure consistent data matching.
+The application allows users to upload photos of their receipts. The backend uses OCR to extract bill data and provides detailed price comparisons against community averages and nearby stores.
 
 ## 🛠 Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
 - **Backend**: Firebase (Firestore, Storage, Functions, Auth)
-- **AI Engine**: Google Genkit (for similarity and suggestions)
 - **Styling**: Tailwind CSS
 - **UI Components**: ShadCN UI
 - **Icons**: Lucide React
@@ -63,7 +56,15 @@ firebase deploy
 ```
 
 ## 🏗 Architecture
-- **Firestore**: Stores user profiles, bills, items, and aggregated statistics.
-- **Storage**: Stores bill images in `/bills/{userId}/{billId}.jpg`.
-- **Functions**: Handles OCR processing via Cloud Vision and provides HTTPS APIs for comparisons.
-- **Rules**: Enforces strict user ownership of financial data.
+
+The application is built on a serverless architecture using Firebase.
+
+- **Frontend**: A Next.js application for the user interface.
+- **Authentication**: Firebase Authentication handles user sign-up and login.
+- **Database**: Firestore stores user profiles, bills, items, and aggregated price statistics.
+- **File Storage**: Firebase Storage stores uploaded bill images.
+- **Backend Logic**: Firebase Functions, triggered by image uploads, handle the entire backend process:
+  - **OCR**: Google Cloud Vision API extracts text from bill images.
+  - **Data Processing**: Deterministic normalization and enrichment of the extracted data.
+  - **APIs**: HTTPS-callable functions provide the frontend with data for price comparisons and product suggestions.
+- **Security**: Firestore and Storage security rules enforce strict data ownership, ensuring users can only access their own financial data.
