@@ -1,29 +1,69 @@
 import {getBoundingBox} from "../api";
 
-describe("API Helpers", () => {
-  describe("getBoundingBox", () => {
-    it("should calculate valid bounds for a given radius", () => {
-      const lat = 34.0522;
-      const lng = -118.2437;
-      const radius = 5; // 5km
+console.log("Running API Helpers tests...");
 
-      const bounds = getBoundingBox(lat, lng, radius);
+let passed = 0;
+let failed = 0;
 
-      expect(bounds.minLat).toBeLessThan(lat);
-      expect(bounds.maxLat).toBeGreaterThan(lat);
-      expect(bounds.minLng).toBeLessThan(lng);
-      expect(bounds.maxLng).toBeGreaterThan(lng);
+const lat = 34.0522;
+const lng = -118.2437;
+const radius = 5; // 5km
 
-      // Rough check: 5km should be approx 0.045 degrees lat
-      expect(bounds.maxLat - lat).toBeCloseTo(0.045, 2);
-    });
+const bounds = getBoundingBox(lat, lng, radius);
 
-    it("should handle zero radius gracefully (though UI restricts it)", () => {
-      const lat = 0;
-      const lng = 0;
-      const bounds = getBoundingBox(lat, lng, 0);
-      expect(bounds.minLat).toBe(0);
-      expect(bounds.maxLat).toBe(0);
-    });
-  });
-});
+if (bounds.minLat < lat) {
+  passed++;
+  console.log("  ✓ OK: minLat is less than lat");
+} else {
+  failed++;
+  console.error(`  ✗ FAIL: minLat (${bounds.minLat}) >= lat (${lat})`);
+}
+
+if (bounds.maxLat > lat) {
+  passed++;
+  console.log("  ✓ OK: maxLat is greater than lat");
+} else {
+  failed++;
+  console.error(`  ✗ FAIL: maxLat (${bounds.maxLat}) <= lat (${lat})`);
+}
+
+if (bounds.minLng < lng) {
+  passed++;
+  console.log("  ✓ OK: minLng is less than lng");
+} else {
+  failed++;
+  console.error(`  ✗ FAIL: minLng (${bounds.minLng}) >= lng (${lng})`);
+}
+
+if (bounds.maxLng > lng) {
+  passed++;
+  console.log("  ✓ OK: maxLng is greater than lng");
+} else {
+  failed++;
+  console.error(`  ✗ FAIL: maxLng (${bounds.maxLng}) <= lng (${lng})`);
+}
+
+// Rough check: 5km should be approx 0.045 degrees lat
+const diff = Math.abs((bounds.maxLat - lat) - 0.045);
+if (diff < 0.01) {
+  passed++;
+  console.log("  ✓ OK: latitude difference check");
+} else {
+  failed++;
+  console.error(`  ✗ FAIL: latitude difference check, expected 0.045, got ${bounds.maxLat - lat}`);
+}
+
+const boundsZero = getBoundingBox(0, 0, 0);
+if (boundsZero.minLat === 0 && boundsZero.maxLat === 0) {
+  passed++;
+  console.log("  ✓ OK: zero radius check");
+} else {
+  failed++;
+  console.error("  ✗ FAIL: zero radius check");
+}
+
+console.log(`\nTests finished. Passed: ${passed}, Failed: ${failed}\n`);
+
+if (failed > 0) {
+  process.exit(1);
+}

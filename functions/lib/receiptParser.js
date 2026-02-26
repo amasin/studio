@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseReceipt = void 0;
+/**
+ * Parses receipt text to extract shop name and items.
+ * @param ocrText The text from OCR.
+ * @return The parsed data, including shop name and a list of items.
+ */
 function parseReceipt(ocrText) {
     const lines = ocrText.split("\n").filter((line) => line.trim().length > 0);
     const shopName = lines[0]?.substring(0, 60);

@@ -1,9 +1,8 @@
-
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 
 // Helper to generate a stable hash for the example ID
-const createExampleId = (normalizedName: string, rawName: string): string => {
+export const createExampleId = (normalizedName: string, rawName: string): string => {
   const hash = crypto.createHash("sha1");
   hash.update(normalizedName);
   hash.update(rawName);
@@ -32,14 +31,12 @@ export const updateAggregationsForBillItems = async (params: {
     for (const item of validItems) {
       const {rawName, normalizedName, category, unit, unitPrice} = item;
 
-      // Shop Item Stats
-      const shopItemStatsRef = db
-        .collection("shopItemStats")
-        .doc(`${shopId}_${normalizedName}`);
-      const shopItemStatDoc = await transaction.get(shopItemStatsRef);
+      // 1. Update shopItemStats
+      const shopItemRef = db.collection("shopItemStats").doc(`${shopId}_${normalizedName}`);
+      const shopItemDoc = await transaction.get(shopItemRef);
 
-      if (!shopItemStatDoc.exists) {
-        transaction.set(shopItemStatsRef, {
+      if (!shopItemDoc.exists) {
+        transaction.set(shopItemRef, {
           shopId,
           normalizedName,
           category,
@@ -51,28 +48,25 @@ export const updateAggregationsForBillItems = async (params: {
           lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       } else {
-        const data = shopItemStatDoc.data();
-        if (data) {
-          const newOccurrences = data.occurrences + 1;
-          const newSumUnitPrice = data.sumUnitPrice + unitPrice;
-          transaction.update(shopItemStatsRef, {
-            occurrences: admin.firestore.FieldValue.increment(1),
-            sumUnitPrice: admin.firestore.FieldValue.increment(unitPrice),
-            minUnitPrice: Math.min(data.minUnitPrice, unitPrice),
-            avgUnitPrice: newSumUnitPrice / newOccurrences,
-            lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+        const data = shopItemDoc.data()!;
+        const newOccurrences = data.occurrences + 1;
+        const newSum = data.sumUnitPrice + unitPrice;
+        const newMin = Math.min(data.minUnitPrice, unitPrice);
+        transaction.update(shopItemRef, {
+          occurrences: admin.firestore.FieldValue.increment(1),
+          sumUnitPrice: admin.firestore.FieldValue.increment(unitPrice),
+          minUnitPrice: newMin,
+          avgUnitPrice: newSum / newOccurrences,
+          lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
-      // Global Item Stats
-      const globalItemStatsRef = db
-        .collection("globalItemStats")
-        .doc(normalizedName);
-      const globalItemStatDoc = await transaction.get(globalItemStatsRef);
+      // 2. Update globalItemStats
+      const globalItemRef = db.collection("globalItemStats").doc(normalizedName);
+      const globalItemDoc = await transaction.get(globalItemRef);
 
-      if (!globalItemStatDoc.exists) {
-        transaction.set(globalItemStatsRef, {
+      if (!globalItemDoc.exists) {
+        transaction.set(globalItemRef, {
           normalizedName,
           category,
           unit,
@@ -83,27 +77,25 @@ export const updateAggregationsForBillItems = async (params: {
           lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       } else {
-        const data = globalItemStatDoc.data();
-        if (data) {
-          const newOccurrences = data.occurrences + 1;
-          const newSumUnitPrice = data.sumUnitPrice + unitPrice;
-          transaction.update(globalItemStatsRef, {
-            occurrences: admin.firestore.FieldValue.increment(1),
-            sumUnitPrice: admin.firestore.FieldValue.increment(unitPrice),
-            minUnitPrice: Math.min(data.minUnitPrice, unitPrice),
-            avgUnitPrice: newSumUnitPrice / newOccurrences,
-            lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+        const data = globalItemDoc.data()!;
+        const newOccurrences = data.occurrences + 1;
+        const newSum = data.sumUnitPrice + unitPrice;
+        const newMin = Math.min(data.minUnitPrice, unitPrice);
+        transaction.update(globalItemRef, {
+          occurrences: admin.firestore.FieldValue.increment(1),
+          sumUnitPrice: admin.firestore.FieldValue.increment(unitPrice),
+          minUnitPrice: newMin,
+          avgUnitPrice: newSum / newOccurrences,
+          lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
-      // Raw Example
+      // 3. Update itemRawExamples
       const exampleId = createExampleId(normalizedName, rawName);
-      const exampleRef = db
-        .collection("itemRawExamples")
-        .doc(normalizedName)
-        .collection("examples")
-        .doc(exampleId);
+      const exampleRef = db.collection("itemRawExamples")
+          .doc(normalizedName)
+          .collection("examples")
+          .doc(exampleId);
       const exampleDoc = await transaction.get(exampleRef);
 
       if (!exampleDoc.exists) {

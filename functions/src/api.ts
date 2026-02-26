@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
-import {Request, Response} from "firebase-functions/v2/https";
+import {Request} from "firebase-functions/v2/https";
+import {Response} from "express";
 import * as logger from "firebase-functions/logger";
 import {combinedSimilarity} from "./similarity";
 
@@ -230,7 +231,7 @@ export async function handleGetSimilarProducts(
     }
 
     const candidatesSnap = await query.limit(200).get();
-    const scores = [];
+    const scores: any[] = [];
 
     for (const doc of candidatesSnap.docs) {
       const data = doc.data();

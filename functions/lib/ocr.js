@@ -30,8 +30,9 @@ const storage_1 = require("firebase-functions/v2/storage");
 const vision_1 = require("@google-cloud/vision");
 const receiptParser_1 = require("./receiptParser");
 const normalize_1 = require("./normalize");
-const crypto = __importStar(require("crypto"));
 const aggregations_1 = require("./aggregations");
+const crypto = __importStar(require("crypto"));
+// admin.initializeApp() already called in firebase.ts if used or assuming index.ts
 if (admin.apps.length === 0) {
     admin.initializeApp();
 }
@@ -45,7 +46,7 @@ exports.processBillUpload = (0, storage_1.onObjectFinalized)({ region: "us-centr
     }
     const filePathParts = filePath.split("/");
     if (filePathParts.length < 3 || filePathParts[0] !== "bills") {
-        logger.info(`Ignoring file outside of bills folder or with incorrect path structure: ${filePath}`);
+        logger.info(`Ignoring file outside of bills folder: ${filePath}`);
         return;
     }
     const userId = filePathParts[1];
@@ -70,36 +71,39 @@ exports.processBillUpload = (0, storage_1.onObjectFinalized)({ region: "us-centr
             shopId = crypto.createHash("sha256").update(normalizedShopName).digest("hex").substring(0, 16);
             await db.collection("shops").doc(shopId).set({ name: shopName, address: "" }, { merge: true });
         }
+        // Idempotent: delete old items
         const existingItems = await db.collection("billItems").where("billId", "==", billId).get();
         const batch = db.batch();
         existingItems.docs.forEach((doc) => batch.delete(doc.ref));
         await batch.commit();
-        const billItemsForDb = items.map((item) => ({
-            rawName: item.rawName,
-            normalizedName: (0, normalize_1.normalizeProductName)(item.rawName),
-            category: "unknown",
-            unit: "",
-            unitPrice: item.unitPrice || 0,
-            totalPrice: item.totalPrice || 0,
-        }));
-        if (billItemsForDb.length > 0) {
+        if (items.length > 0) {
             const newBatch = db.batch();
-            billItemsForDb.forEach((item, index) => {
+            const aggregationItems = [];
+            items.forEach((item, index) => {
                 const billItemId = `${billId}_${index}`;
+                const normalizedName = (0, normalize_1.normalizeProductName)(item.rawName);
                 const billItemRef = db.collection("billItems").doc(billItemId);
-                newBatch.set(billItemRef, {
+                const billItemData = {
                     billId,
                     userId,
                     shopId,
-                    ...item,
+                    rawName: item.rawName,
+                    normalizedName,
+                    category: "unknown",
+                    quantity: item.quantity || 1,
+                    unit: "",
+                    unitPrice: item.unitPrice || 0,
+                    totalPrice: item.totalPrice || 0,
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
+                };
+                newBatch.set(billItemRef, billItemData);
+                aggregationItems.push(billItemData);
             });
             await newBatch.commit();
-            // After creating bill items, update aggregations
+            // Call aggregations
             await (0, aggregations_1.updateAggregationsForBillItems)({
                 shopId,
-                billItems: billItemsForDb,
+                billItems: aggregationItems,
             });
         }
         else {

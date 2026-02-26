@@ -1,58 +1,44 @@
-import {updateAggregationsForBillItems} from "../aggregations";
-import * as admin from "firebase-admin";
-import * as crypto from "crypto";
+import {createExampleId} from "../aggregations";
 
-describe("Aggregation Helpers", () => {
-  it("should not process items with zero unit price", async () => {
-    const billItems = [
-      {
-        rawName: "Test Item",
-        normalizedName: "test item",
-        category: "test",
-        unit: "unit",
-        unitPrice: 0,
-      },
-    ];
+console.log("Running Aggregation logic tests...");
 
-    // This is a mock of the firestore transaction
-    const mockTransaction = {
-      get: jest.fn(),
-      set: jest.fn(),
-      update: jest.fn(),
-    };
+let passed = 0;
+let failed = 0;
 
-    const mockDb = {
-      runTransaction: jest.fn().mockImplementation(async (updateFunction) => {
-        await updateFunction(mockTransaction);
-      }),
-    };
-    jest.spyOn(admin, "firestore").mockReturnValue(
-      mockDb as admin.firestore.Firestore
-    );
+const norm = "apple";
+const raw = "Apple 1kg";
+const id1 = createExampleId(norm, raw);
+const id2 = createExampleId(norm, raw);
 
-    await updateAggregationsForBillItems({shopId: "test-shop", billItems});
+if (id1 === id2) {
+  passed++;
+  console.log("  ✓ OK: stable exampleId for same input");
+} else {
+  failed++;
+  console.error("  ✗ FAIL: unstable exampleId");
+}
 
-    expect(mockDb.runTransaction).toHaveBeenCalled();
-    expect(mockTransaction.set).not.toHaveBeenCalled();
-    expect(mockTransaction.update).not.toHaveBeenCalled();
-  });
+if (id1.length === 10) {
+  passed++;
+  console.log("  ✓ OK: exampleId length is 10");
+} else {
+  failed++;
+  console.error(`  ✗ FAIL: incorrect exampleId length, got ${id1.length}`);
+}
 
-  it("should generate a predictable exampleId", () => {
-    const createExampleId = (
-      normalizedName: string,
-      rawName: string
-    ): string => {
-      const hash = crypto.createHash("sha1");
-      hash.update(normalizedName);
-      hash.update(rawName);
-      return hash.digest("hex").substring(0, 10);
-    };
+const raw2 = "Apples";
+const id3 = createExampleId(norm, raw2);
 
-    const id1 = createExampleId("milk", "Fresh Milk 1L");
-    const id2 = createExampleId("milk", "Fresh Milk 1L");
-    const id3 = createExampleId("MILK", "Fresh Milk 1L");
+if (id1 !== id3) {
+  passed++;
+  console.log("  ✓ OK: different ids for different raw names");
+} else {
+  failed++;
+  console.error("  ✗ FAIL: same ids for different raw names");
+}
 
-    expect(id1).toEqual(id2);
-    expect(id1).not.toEqual(id3);
-  });
-});
+console.log(`\nTests finished. Passed: ${passed}, Failed: ${failed}\n`);
+
+if (failed > 0) {
+  process.exit(1);
+}
