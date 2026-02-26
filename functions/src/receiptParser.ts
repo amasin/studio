@@ -1,7 +1,7 @@
 /**
  * Parses receipt text to extract shop name and items.
  * @param ocrText The text from OCR.
- * @returns The parsed data, including shop name and a list of items.
+ * @return The parsed data, including shop name and a list of items.
  */
 export function parseReceipt(ocrText: string): {
   shopName?: string;
