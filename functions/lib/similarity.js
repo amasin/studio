@@ -9,7 +9,7 @@ exports.tokenize = tokenize;
 function jaccardSimilarity(aTokens, bTokens) {
     const aSet = new Set(aTokens);
     const bSet = new Set(bTokens);
-    const intersection = new Set([...aSet].filter(token => bSet.has(token)));
+    const intersection = new Set([...aSet].filter((token) => bSet.has(token)));
     const union = new Set([...aSet, ...bSet]);
     if (union.size === 0) {
         return 1; // Both are empty strings
@@ -40,8 +40,7 @@ function levenshteinDistance(a, b) {
             else {
                 matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, // substitution
                 matrix[i][j - 1] + 1, // insertion
-                matrix[i - 1][j] + 1 // deletion
-                );
+                matrix[i - 1][j] + 1);
             }
         }
     }

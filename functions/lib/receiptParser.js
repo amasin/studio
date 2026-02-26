@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseReceipt = void 0;
 function parseReceipt(ocrText) {
-    const lines = ocrText.split('\n').filter(line => line.trim().length > 0);
+    const lines = ocrText.split("\n").filter((line) => line.trim().length > 0);
     const shopName = lines[0]?.substring(0, 60);
     const items = [];
     const priceRegex = /(\d+\.\d{2})$/;

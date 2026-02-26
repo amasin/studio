@@ -1,10 +1,23 @@
 import {normalizeProductName} from "./normalize";
 
+/**
+ * Splits a string into an array of words.
+ * @param {string} text The input string.
+ * @return {string[]} An array of words.
+ */
 export function tokenize(text: string): string[] {
   return text.split(/\s+/);
 }
 
-export function jaccardSimilarity(aTokens: string[], bTokens: string[]): number {
+/**
+ * Calculates the Jaccard similarity between two arrays of strings.
+ * @param {string[]} aTokens The first array of strings.
+ * @param {string[]} bTokens The second array of strings.
+ * @return {number} The Jaccard similarity score.
+ */
+export function jaccardSimilarity(
+  aTokens: string[], bTokens: string[]
+): number {
   const aSet = new Set(aTokens);
   const bSet = new Set(bTokens);
   const intersection = new Set([...aSet].filter((token) => bSet.has(token)));
@@ -15,6 +28,12 @@ export function jaccardSimilarity(aTokens: string[], bTokens: string[]): number 
   return intersection.size / union.size;
 }
 
+/**
+ * Calculates the Levenshtein distance between two strings.
+ * @param {string} a The first string.
+ * @param {string} b The second string.
+ * @return {number} The Levenshtein distance.
+ */
 export function levenshteinDistance(a: string, b: string): number {
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
@@ -38,9 +57,9 @@ export function levenshteinDistance(a: string, b: string): number {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
         matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1, // substitution
-            matrix[i][j - 1] + 1, // insertion
-            matrix[i - 1][j] + 1, // deletion
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1, // deletion
         );
       }
     }
@@ -49,6 +68,12 @@ export function levenshteinDistance(a: string, b: string): number {
   return matrix[b.length][a.length];
 }
 
+/**
+ * Calculates a combined similarity score between two strings.
+ * @param {string} a The first string.
+ * @param {string} b The second string.
+ * @return {number} The combined similarity score.
+ */
 export function combinedSimilarity(a: string, b: string): number {
   if (a === b) {
     return 1.0;
@@ -61,10 +86,13 @@ export function combinedSimilarity(a: string, b: string): number {
     return 1.0;
   }
 
-  if (normalizedA.startsWith(normalizedB) || normalizedB.startsWith(normalizedA)) {
+  if (
+    normalizedA.startsWith(normalizedB) ||
+    normalizedB.startsWith(normalizedA)
+  ) {
     const shorter = Math.min(normalizedA.length, normalizedB.length);
     const longer = Math.max(normalizedA.length, normalizedB.length);
-    // Prefix similarity: score is high, but not 1.0, and depends on the length difference
+    // Prefix similarity: high score, but not 1.0, depends on length diff
     return 0.9 + 0.1 * (shorter / longer);
   }
 

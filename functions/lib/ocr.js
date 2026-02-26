@@ -31,77 +31,87 @@ const vision_1 = require("@google-cloud/vision");
 const receiptParser_1 = require("./receiptParser");
 const normalize_1 = require("./normalize");
 const crypto = __importStar(require("crypto"));
-admin.initializeApp();
+const aggregations_1 = require("./aggregations");
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
 const db = admin.firestore();
 const visionClient = new vision_1.ImageAnnotatorClient();
-exports.processBillUpload = (0, storage_1.onObjectFinalized)({ region: 'us-central1' }, async (event) => {
+exports.processBillUpload = (0, storage_1.onObjectFinalized)({ region: "us-central1" }, async (event) => {
     const { bucket, name: filePath, contentType } = event.data;
-    if (!contentType?.startsWith('image/') || !filePath) {
+    if (!contentType?.startsWith("image/") || !filePath) {
         logger.info(`Ignoring non-image file: ${filePath}`);
         return;
     }
-    const filePathParts = filePath.split('/');
-    if (filePathParts.length < 3 || filePathParts[0] !== 'bills') {
+    const filePathParts = filePath.split("/");
+    if (filePathParts.length < 3 || filePathParts[0] !== "bills") {
         logger.info(`Ignoring file outside of bills folder or with incorrect path structure: ${filePath}`);
         return;
     }
     const userId = filePathParts[1];
-    const billId = filePathParts[2].split('.')[0];
-    const billRef = db.collection('bills').doc(billId);
+    const billId = filePathParts[2].split(".")[0];
+    const billRef = db.collection("bills").doc(billId);
     try {
         await billRef.set({
             userId,
             billImagePath: filePath,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            status: 'pending_ocr',
-            currency: 'INR',
+            status: "pending_ocr",
+            currency: "INR",
             ocrStartedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
         const [result] = await visionClient.documentTextDetection(`gs://${bucket}/${filePath}`);
-        const ocrText = result.fullTextAnnotation?.text ?? '';
+        const ocrText = result.fullTextAnnotation?.text ?? "";
         await billRef.update({ ocrTextPreview: ocrText.substring(0, 1000) });
         const { shopName, items } = (0, receiptParser_1.parseReceipt)(ocrText);
-        let shopId = 'unknown';
+        let shopId = "unknown";
         if (shopName) {
-            const normalizedShopName = shopName.toLowerCase().replace(/\s+/g, ' ').trim();
-            shopId = crypto.createHash('sha256').update(normalizedShopName).digest('hex').substring(0, 16);
-            await db.collection('shops').doc(shopId).set({ name: shopName, address: '' }, { merge: true });
+            const normalizedShopName = shopName.toLowerCase().replace(/\s+/g, " ").trim();
+            shopId = crypto.createHash("sha256").update(normalizedShopName).digest("hex").substring(0, 16);
+            await db.collection("shops").doc(shopId).set({ name: shopName, address: "" }, { merge: true });
         }
-        const existingItems = await db.collection('billItems').where('billId', '==', billId).get();
+        const existingItems = await db.collection("billItems").where("billId", "==", billId).get();
         const batch = db.batch();
-        existingItems.docs.forEach(doc => batch.delete(doc.ref));
+        existingItems.docs.forEach((doc) => batch.delete(doc.ref));
         await batch.commit();
-        if (items.length > 0) {
+        const billItemsForDb = items.map((item) => ({
+            rawName: item.rawName,
+            normalizedName: (0, normalize_1.normalizeProductName)(item.rawName),
+            category: "unknown",
+            unit: "",
+            unitPrice: item.unitPrice || 0,
+            totalPrice: item.totalPrice || 0,
+        }));
+        if (billItemsForDb.length > 0) {
             const newBatch = db.batch();
-            items.forEach((item, index) => {
+            billItemsForDb.forEach((item, index) => {
                 const billItemId = `${billId}_${index}`;
-                const billItemRef = db.collection('billItems').doc(billItemId);
+                const billItemRef = db.collection("billItems").doc(billItemId);
                 newBatch.set(billItemRef, {
                     billId,
                     userId,
                     shopId,
-                    rawName: item.rawName,
-                    normalizedName: (0, normalize_1.normalizeProductName)(item.rawName),
-                    category: 'unknown',
-                    quantity: item.quantity || 1,
-                    unit: '',
-                    unitPrice: item.unitPrice || 0,
-                    totalPrice: item.totalPrice || 0,
+                    ...item,
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
             });
             await newBatch.commit();
+            // After creating bill items, update aggregations
+            await (0, aggregations_1.updateAggregationsForBillItems)({
+                shopId,
+                billItems: billItemsForDb,
+            });
         }
         else {
-            await billRef.update({ parseWarning: 'NO_ITEMS_PARSED' });
+            await billRef.update({ parseWarning: "NO_ITEMS_PARSED" });
         }
-        await billRef.update({ status: 'processed', processedAt: admin.firestore.FieldValue.serverTimestamp() });
+        await billRef.update({ status: "processed", processedAt: admin.firestore.FieldValue.serverTimestamp() });
     }
     catch (error) {
         logger.error(`Error processing bill ${billId}:`, error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         await billRef.update({
-            status: 'failed',
+            status: "failed",
             errorMessage,
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
         });

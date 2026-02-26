@@ -1,6 +1,16 @@
+/**
+ * Parses receipt text to extract shop name and items.
+ * @param ocrText The text from OCR.
+ * @returns The parsed data, including shop name and a list of items.
+ */
 export function parseReceipt(ocrText: string): {
   shopName?: string;
-  items: Array<{ rawName: string; quantity: number; unitPrice: number; totalPrice: number }>;
+  items: Array<{
+    rawName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }>;
 } {
   const lines = ocrText.split("\n").filter((line) => line.trim().length > 0);
   const shopName = lines[0]?.substring(0, 60);
