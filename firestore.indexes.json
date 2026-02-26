@@ -1,3 +1,4 @@
+
 {
   "indexes": [
     {
@@ -15,31 +16,6 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "billId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "billItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "normalizedName", "order": "ASCENDING" },
-        { "fieldPath": "shopId", "order": "ASCENDING" },
-        { "fieldPath": "unitPrice", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "shopItemStats",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "normalizedName", "order": "ASCENDING" },
-        { "fieldPath": "minUnitPrice", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "globalItemStats",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "category", "order": "ASCENDING" },
-        { "fieldPath": "avgUnitPrice", "order": "ASCENDING" }
       ]
     }
   ],

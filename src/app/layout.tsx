@@ -3,7 +3,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/layout/app-shell';
-import { AuthProvider } from '@/lib/auth';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'BillBuddy Savings',
@@ -26,9 +26,9 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased h-full bg-background')}>
-        <AuthProvider>
+        <FirebaseClientProvider>
           <AppShell>{children}</AppShell>
-        </AuthProvider>
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>

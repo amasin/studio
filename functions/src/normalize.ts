@@ -1,38 +1,27 @@
+
 /**
- * Normalizes a product name by converting it to lowercase, removing units,
- * punctuation, and extra whitespace.
- * @param {string} raw The raw product name.
- * @return {string} The normalized product name.
+ * Deterministic normalization of product names.
  */
 export function normalizeProductName(raw: string): string {
-  if (!raw) {
-    return "";
-  }
-  // lowercase
+  if (!raw) return "";
+  
   let normalized = raw.toLowerCase();
 
   const units = [
     "kg", "g", "gm", "grams", "l", "lt", "litre", "liter", "ml", "pcs",
-    "piece", "pieces", "pkt",
+    "piece", "pieces", "pkt", "pack"
   ];
 
-  // remove common quantity patterns like "1kg", "500g", "2 l", "200 ml", "1.5L"
-  // With space
-  normalized = normalized.replace(
-    new RegExp(`\\b\\d+(\\.\\d+)?\\s+(${units.join("|")})\\b`, "g"), " ");
-  // Without space
-  normalized = normalized.replace(
-    new RegExp(`\\b\\d+(\\.\\d+)?(${units.join("|")})\\b`, "g"), " ");
-
-  // remove punctuation/symbols (keep alphanumerics + spaces)
+  // Remove quantities like "1kg", "500g", "2 l"
+  normalized = normalized.replace(new RegExp(`\\b\\d+(\\.\\d+)?\\s*(${units.join("|")})\\b`, "g"), " ");
+  
+  // Remove punctuation
   normalized = normalized.replace(/[^a-z0-9\s]/g, " ");
-
-  // remove unit descriptors at end or anywhere as tokens
-  const regex = new RegExp(`\\b(${units.join("|")})\\b`, "g");
-  normalized = normalized.replace(regex, " ");
-
-  // normalize whitespace to single spaces and trim
-  normalized = normalized.replace(/\s+/g, " ").trim();
-
-  return normalized;
+  
+  // Remove standalone units
+  const unitRegex = new RegExp(`\\b(${units.join("|")})\\b`, "g");
+  normalized = normalized.replace(unitRegex, " ");
+  
+  // Normalize whitespace
+  return normalized.replace(/\s+/g, " ").trim();
 }

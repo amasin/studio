@@ -1,10 +1,8 @@
 'use client';
 
-import withAuth from '@/components/withAuth';
-import { useEffect, useState, useMemo } from 'react';
-import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebaseClient';
-import { useAuth } from '@/lib/auth';
+import { useMemo, useState } from 'react';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirestore, useDoc, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import {
   Card,
   CardContent,
@@ -12,68 +10,72 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { FileText } from 'lucide-react';
+import { FileText, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import BillItemsList from '@/components/bill-items-list';
 import { Button } from '@/components/ui/button';
-import { getBillComparison } from '@/lib/functionsApi';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useParams } from 'next/navigation';
+import type { Bill, BillItem, ComparisonResponse } from '@/lib/types';
 
-function BillDetailPage({ params }: { params: { billId: string } }) {
-  const { user } = useAuth();
-  const [bill, setBill] = useState<any>(null);
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [comparisonData, setComparisonData] = useState<any>(null);
+export default function BillDetailPage() {
+  const { billId } = useParams() as { billId: string };
+  const { user } = useUser();
+  const db = useFirestore();
+  const [comparisonData, setComparisonData] = useState<ComparisonResponse | null>(null);
+  const [comparing, setComparing] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      const billDocRef = doc(db, 'bills', params.billId);
+  const billRef = useMemo(() => billId ? doc(db, 'bills', billId) : null, [db, billId]);
+  const { data: bill, isLoading: billLoading } = useDoc<Bill>(billRef);
 
-      const unsubscribeBill = onSnapshot(billDocRef, (doc) => {
-        if (doc.exists()) {
-          setBill({ id: doc.id, ...doc.data() });
-        }
-        setLoading(false);
-      });
+  const itemsQuery = useMemoFirebase(() => {
+    if (!user || !billId) return null;
+    return query(
+      collection(db, 'billItems'),
+      where('userId', '==', user.uid),
+      where('billId', '==', billId),
+      orderBy('createdAt', 'desc')
+    );
+  }, [db, user, billId]);
 
-      // Updated query to satisfy security rules: MUST include userId filter for list operations
-      const itemsQuery = query(
-        collection(db, 'billItems'),
-        where('userId', '==', user.uid),
-        where('billId', '==', params.billId),
-        orderBy('createdAt', 'desc')
-      );
-
-      const unsubscribeItems = onSnapshot(itemsQuery, (querySnapshot) => {
-        const itemsData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setItems(itemsData);
-      });
-
-      return () => {
-        unsubscribeBill();
-        unsubscribeItems();
-      };
-    }
-  }, [user, params.billId]);
+  const { data: items, isLoading: itemsLoading } = useCollection<BillItem>(itemsQuery);
 
   const handleCompare = async () => {
+    if (!user) return;
+    setComparing(true);
     try {
-      const data = await getBillComparison(params.billId);
+      const token = await user.getIdToken();
+      const response = await fetch(`https://us-central1-${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.cloudfunctions.net/getBillComparison?billId=${billId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
       setComparisonData(data);
     } catch (error) {
       console.error("Comparison failed:", error);
+    } finally {
+      setComparing(false);
     }
   };
 
-  if (loading) {
-    return <div>Loading bill details...</div>;
+  if (billLoading || itemsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading bill details...</p>
+      </div>
+    );
   }
 
   if (!bill) {
-    return <div>Bill not found.</div>;
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Bill not found or you don't have permission to view it.</AlertDescription>
+      </Alert>
+    );
   }
 
   const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -81,16 +83,16 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
     currency: bill.currency || 'INR',
   });
 
-  const purchaseDate = bill.purchaseDate?.toDate ? bill.purchaseDate.toDate() : new Date();
+  const purchaseDate = bill.purchaseDate?.toDate() || bill.createdAt?.toDate() || new Date();
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold font-headline tracking-tight">
-          {bill.shopName || 'Processed Bill'}
+          {bill.status === 'processed' ? 'Bill Summary' : 'Processing Bill...'}
         </h1>
         <p className="text-muted-foreground">
-          Bill from {format(purchaseDate, 'PPPp')}
+          Uploaded on {format(purchaseDate, 'PPP')}
         </p>
       </div>
 
@@ -98,26 +100,47 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
-            <span className="text-muted-foreground">
-              <FileText className="h-4 w-4" />
-            </span>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currencyFormatter.format(bill.totalAmount || 0)}
+              {bill.totalAmount ? currencyFormatter.format(bill.totalAmount) : '...'}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Status: <span className="capitalize">{bill.status}</span>
+            <p className="text-xs text-muted-foreground mt-1">
+              Status: <span className={cn(
+                "font-medium",
+                bill.status === 'processed' ? "text-green-600" : 
+                bill.status === 'failed' ? "text-red-600" : "text-amber-600"
+              )}>
+                {bill.status.replace('_', ' ')}
+              </span>
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex gap-4">
-        <Button onClick={handleCompare} disabled={bill.status !== 'processed'}>
-          {comparisonData ? 'Refresh Comparison' : 'Compare Prices'}
-        </Button>
-      </div>
+      {bill.status === 'failed' && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Processing Failed</AlertTitle>
+          <AlertDescription>{bill.errorMessage || 'An error occurred during OCR.'}</AlertDescription>
+        </Alert>
+      )}
+
+      {bill.status === 'processed' && (
+        <div className="flex gap-4">
+          <Button onClick={handleCompare} disabled={comparing}>
+            {comparing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Comparing...
+              </>
+            ) : (
+              comparisonData ? 'Refresh Comparison' : 'Find Better Prices'
+            )}
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -127,15 +150,19 @@ function BillDetailPage({ params }: { params: { billId: string } }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BillItemsList 
-            items={items} 
-            comparisonData={comparisonData?.items || []} 
-            currency={bill.currency || 'INR'} 
-          />
+          {items && items.length > 0 ? (
+            <BillItemsList 
+              items={items} 
+              comparisonData={comparisonData?.items || []} 
+              currency={bill.currency || 'INR'} 
+            />
+          ) : (
+            <div className="text-center py-10 text-muted-foreground">
+              {bill.status === 'pending_ocr' ? 'Extraction in progress...' : 'No items found.'}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-export default withAuth(BillDetailPage);

@@ -1,8 +1,10 @@
-export interface User {
+import { Timestamp } from 'firebase/firestore';
+
+export interface UserProfile {
   id: string;
   displayName: string;
   email: string;
-  createdAt: Date;
+  createdAt: Timestamp;
   homeLocation: {
     latitude: number;
     longitude: number;
@@ -17,22 +19,23 @@ export interface Shop {
     latitude: number;
     longitude: number;
   };
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export interface Bill {
   id: string;
   userId: string;
-  shopId: string;
+  shopId?: string;
   billImagePath: string;
-  purchaseDate: Date;
-  subTotal: number;
-  tax: number;
-  totalAmount: number;
+  purchaseDate?: Timestamp;
+  subTotal?: number;
+  tax?: number;
+  totalAmount?: number;
   currency: string;
-  createdAt: Date;
+  createdAt: Timestamp;
   status: 'pending_ocr' | 'processed' | 'failed';
-  shop?: Shop; // Populated for convenience
+  errorMessage?: string;
+  shop?: Shop;
 }
 
 export interface BillItem {
@@ -47,26 +50,23 @@ export interface BillItem {
   unit: string;
   unitPrice: number;
   totalPrice: number;
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export interface PriceComparisonItem {
-  billItemId: string;
+  normalizedName: string;
+  rawName: string;
   userUnitPrice: number;
   minUnitPrice: number;
   avgUnitPrice: number;
-  cheaperShops: {
+  cheaperShopPrices: {
     shopId: string;
     shopName: string;
-    price: number;
+    unitPrice: number;
   }[];
 }
 
-export interface SimilarProductSuggestion {
-  normalizedName: string;
-  exampleRawNames: string[];
-  unit: string;
-  averagePrice: number;
-  minimumPrice: number;
-  occurrences: number;
+export interface ComparisonResponse {
+  billId: string;
+  items: PriceComparisonItem[];
 }

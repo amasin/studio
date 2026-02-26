@@ -1,18 +1,7 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * BillBuddy Savings: Production Security Rules
-     *
-     * Core Philosophy:
-     * 1. Strict Ownership: Users can only read/write data where userId matches their UID.
-     * 2. Query Enforcement: List operations MUST include a filter on userId to prevent data leakage.
-     * 3. Administrative Control: Aggregated statistics are read-only for clients and writable only by admins.
-     * 4. Public Discovery: Shop details and price trends are publicly accessible for transparency.
-     */
-
-    // --- HELPER FUNCTIONS ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -26,79 +15,46 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // --- COLLECTION RULES ---
-
-    /**
-     * @path /users/{userId}
-     * Owners only. No listing allowed to prevent user enumeration.
-     */
     match /users/{userId} {
       allow get, create, update, delete: if isOwner(userId);
       allow list: if false;
     }
 
-    /**
-     * @path /bills/{billId}
-     * Owners only. Listing is permitted ONLY if the query is filtered by userId.
-     */
     match /bills/{billId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow get, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.limit <= 100 && request.query.offsets == null && request.query.whereField("userId") == request.auth.uid;
+      allow list: if isSignedIn() && request.query.limit <= 100 && request.query.whereField("userId") == request.auth.uid;
     }
 
-    /**
-     * @path /billItems/{billItemId}
-     * Owners only. Denormalized userId allows independent access control.
-     * Listing is permitted ONLY if the query is filtered by userId.
-     */
     match /billItems/{billItemId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow get, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow list: if isSignedIn() && request.query.limit <= 500 && request.query.whereField("userId") == request.auth.uid;
     }
 
-    /**
-     * @path /shops/{shopId}
-     * Public directory for discovery. Admin-only writes.
-     */
     match /shops/{shopId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @path /shopItemStats/{statId}
-     * Public price stats. Admin-only writes.
-     */
     match /shopItemStats/{statId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @path /globalItemStats/{normalizedName}
-     * Global benchmarks. Admin-only writes.
-     */
     match /globalItemStats/{normalizedName} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @path /itemRawExamples/{normalizedName}/examples/{exampleId}
-     * Raw variants for search suggestions. Admin-only writes.
-     */
     match /itemRawExamples/{normalizedName} {
       allow read: if true;
-      allow write: if isAdmin();
       match /examples/{exampleId} {
         allow read: if true;
         allow write: if isAdmin();
       }
     }
 
-    // Default deny for all other paths
     match /{allPaths=**} {
       allow read, write: if false;
     }
