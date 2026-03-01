@@ -46,6 +46,7 @@ export function BillUploadForm() {
         status: 'pending_ocr',
         currency: 'INR',
         createdAt: serverTimestamp(),
+        purchaseDate: serverTimestamp(),
       });
 
       await uploadBytes(storageRef, file);

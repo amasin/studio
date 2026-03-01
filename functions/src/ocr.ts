@@ -102,7 +102,13 @@ export const processBillUpload = onObjectFinalized({region: "us-central1"}, asyn
       await billRef.update({parseWarning: "NO_ITEMS_PARSED"});
     }
 
-    await billRef.update({status: "processed", processedAt: admin.firestore.FieldValue.serverTimestamp()});
+    const processedAt = admin.firestore.FieldValue.serverTimestamp();
+    await billRef.update({
+      status: "processed",
+      processedAt,
+      shopName: shopName || "Unknown Shop",
+      purchaseDate: processedAt,
+    });
   } catch (error) {
     logger.error(`Error processing bill ${billId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

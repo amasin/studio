@@ -27,7 +27,7 @@ function BillsPage() {
       const q = query(
         collection(db, 'bills'),
         where('userId', '==', user.uid),
-        orderBy('purchaseDate', 'desc')
+        orderBy('createdAt', 'desc')
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {

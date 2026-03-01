@@ -73,11 +73,15 @@ export const processBillUpload = onObjectFinalized({ region: "us-central1" }, as
       });
     });
 
+    const processedTimestamp = admin.firestore.FieldValue.serverTimestamp();
+
     batch.update(billRef, {
       shopId,
+      shopName: shopName,
       status: "processed",
       totalAmount: items.reduce((acc, i) => acc + i.totalPrice, 0),
-      processedAt: admin.firestore.FieldValue.serverTimestamp()
+      processedAt: processedTimestamp,
+      purchaseDate: processedTimestamp
     });
 
     await batch.commit();

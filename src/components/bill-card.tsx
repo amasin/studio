@@ -19,12 +19,16 @@ export default function BillCard({ bill }: BillCardProps) {
   const shopImage = PlaceHolderImages.find((img) => img.id === 'shop-facade');
   const currencyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: bill.currency || 'USD',
+    currency: bill.currency || 'INR',
   });
 
-  const purchaseDate = bill.purchaseDate && bill.purchaseDate.toDate ? 
-    bill.purchaseDate.toDate() : 
-    new Date(bill.purchaseDate);
+  const purchaseDate = (bill.purchaseDate && typeof bill.purchaseDate.toDate === 'function') 
+    ? bill.purchaseDate.toDate() 
+    : (bill.createdAt && typeof bill.createdAt.toDate === 'function')
+    ? bill.createdAt.toDate()
+    : new Date();
+
+  const shopName = bill.shopName || bill.shop?.name || 'Unknown Shop';
 
   return (
     <Link href={`/bills/${bill.id}`} className="group block">
@@ -33,7 +37,7 @@ export default function BillCard({ bill }: BillCardProps) {
           <div className="relative h-40 w-full">
             <Image
               src={shopImage?.imageUrl ?? ''}
-              alt={bill.shop?.name ?? 'Shop'}
+              alt={shopName}
               fill
               className="object-cover"
               data-ai-hint={shopImage?.imageHint}
@@ -42,7 +46,7 @@ export default function BillCard({ bill }: BillCardProps) {
         </CardHeader>
         <CardContent className="flex-grow p-4">
           <CardTitle className="mb-1 text-lg font-bold font-headline">
-            {bill.shop?.name}
+            {shopName}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {format(purchaseDate, 'PPP')}

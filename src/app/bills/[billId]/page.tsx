@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useParams } from 'next/navigation';
 import type { Bill, BillItem, ComparisonResponse } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export default function BillDetailPage() {
   const { billId } = useParams() as { billId: string };
@@ -83,13 +84,17 @@ export default function BillDetailPage() {
     currency: bill.currency || 'INR',
   });
 
-  const purchaseDate = bill.purchaseDate?.toDate() || bill.createdAt?.toDate() || new Date();
+  const purchaseDate = (bill.purchaseDate && typeof bill.purchaseDate.toDate === 'function') 
+    ? bill.purchaseDate.toDate() 
+    : (bill.createdAt && typeof bill.createdAt.toDate === 'function')
+    ? bill.createdAt.toDate()
+    : new Date();
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold font-headline tracking-tight">
-          {bill.status === 'processed' ? 'Bill Summary' : 'Processing Bill...'}
+          {bill.shopName || bill.shop?.name || 'Bill Summary'}
         </h1>
         <p className="text-muted-foreground">
           Uploaded on {format(purchaseDate, 'PPP')}
@@ -112,7 +117,7 @@ export default function BillDetailPage() {
                 bill.status === 'processed' ? "text-green-600" : 
                 bill.status === 'failed' ? "text-red-600" : "text-amber-600"
               )}>
-                {bill.status.replace('_', ' ')}
+                {bill.status ? bill.status.replace('_', ' ') : 'unknown'}
               </span>
             </p>
           </CardContent>
